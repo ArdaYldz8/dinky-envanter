@@ -1,0 +1,22 @@
+{
+  "name": "dinky-metal-erp",
+  "version": "1.0.0",
+  "description": "Dinky Metal ERP - Personnel and Stock Management System",
+  "main": "index.html",
+  "type": "module",
+  "scripts": {
+    "start": "python3 -m http.server 8080",
+    "dev": "python3 -m http.server 8080"
+  },
+  "keywords": [
+    "erp",
+    "inventory",
+    "personnel",
+    "management"
+  ],
+  "author": "Dinky Metal",
+  "license": "MIT",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.57.0"
+  }
+}
