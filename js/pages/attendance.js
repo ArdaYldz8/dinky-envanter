@@ -231,7 +231,8 @@ window.saveAttendance = async function() {
                 employee_id: record.employee_id,
                 work_date: record.work_date,
                 status: record.status,
-                project_id: record.project_id
+                project_id: record.project_id,
+                overtime_hours: record.overtime_hours || 0
             });
         });
 

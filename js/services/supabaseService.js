@@ -129,6 +129,36 @@ export const attendanceService = {
     async upsert(records) {
         const { data, error } = await supabase
             .from('attendance_records')
+            .upsert(records, { 
+                onConflict: 'employee_id,work_date',
+                ignoreDuplicates: false 
+            })
+            .select();
+        return { data, error };
+    },
+
+    async create(record) {
+        const { data, error } = await supabase
+            .from('attendance_records')
+            .insert([record])
+            .select()
+            .single();
+        return { data, error };
+    },
+
+    async update(id, updates) {
+        const { data, error } = await supabase
+            .from('attendance_records')
+            .update(updates)
+            .eq('id', id)
+            .select()
+            .single();
+        return { data, error };
+    },
+
+    async upsert(records) {
+        const { data, error } = await supabase
+            .from('attendance_records')
             .upsert(records, { onConflict: 'employee_id,work_date' })
             .select();
         return { data, error };
