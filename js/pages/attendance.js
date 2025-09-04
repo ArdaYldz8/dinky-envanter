@@ -232,7 +232,8 @@ window.saveAttendance = async function() {
                 work_date: record.work_date,
                 status: record.status,
                 project_id: record.project_id,
-                overtime_hours: record.overtime_hours || 0
+                overtime_hours: record.overtime_hours || 0,
+                created_by: getCurrentUserId()
             });
         });
 
