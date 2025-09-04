@@ -466,7 +466,7 @@ async function processStockMovement(product, modal) {
             project_id: projectId,
             description: description,
             movement_date: new Date().toISOString().split('T')[0],
-            created_by: getCurrentUserId()
+            created_by: getCurrentUserId() || null
         });
         
         if (error) {

@@ -95,6 +95,10 @@ async function loadAttendanceData(date) {
 
         // Render table
         const tbody = document.getElementById('attendanceTableBody');
+        if (!tbody) {
+            console.error('attendanceTableBody element not found');
+            return;
+        }
         tbody.innerHTML = currentAttendanceData.map((record, index) => `
             <tr data-index="${index}" class="${record.isModified ? 'modified-row' : ''}">
                 <td><strong>${record.employee_name}</strong></td>
@@ -233,7 +237,7 @@ window.saveAttendance = async function() {
                 status: record.status,
                 project_id: record.project_id,
                 overtime_hours: record.overtime_hours || 0,
-                created_by: getCurrentUserId()
+                created_by: getCurrentUserId() || null
             });
         });
 
