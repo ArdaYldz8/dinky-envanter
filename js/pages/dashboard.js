@@ -113,8 +113,8 @@ async function loadDashboardData() {
         
         if (!lowStockList) {
             console.error('lowStockList element not found');
-            return;
-        }
+            // Continue with other operations
+        } else {
         
         if (lowStock && lowStock.length > 0) {
             lowStockList.innerHTML = `
@@ -146,6 +146,7 @@ async function loadDashboardData() {
         } else {
             lowStockList.innerHTML = '<p class="text-success"><i class="fas fa-check-circle"></i> Tüm ürünler güvenli stok seviyesinde.</p>';
         }
+        }
 
         // Load recent movements
         const { data: movements, error: movError } = await inventoryService.getRecent(5);
@@ -153,8 +154,8 @@ async function loadDashboardData() {
         
         if (!recentMovements) {
             console.error('recentMovements element not found');
-            return;
-        }
+            // Continue with other operations
+        } else {
         
         if (movements && movements.length > 0) {
             recentMovements.innerHTML = `
@@ -187,6 +188,7 @@ async function loadDashboardData() {
             `;
         } else {
             recentMovements.innerHTML = '<p class="text-muted">Henüz stok hareketi bulunmuyor.</p>';
+        }
         }
 
     } catch (error) {

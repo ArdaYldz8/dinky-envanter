@@ -1,6 +1,9 @@
 // Supabase Service Layer - All database operations
 import { supabase } from './supabaseClient.js';
 
+// Re-export supabase client for direct use
+export { supabase };
+
 // Employee Operations
 export const employeeService = {
     async getAll() {
