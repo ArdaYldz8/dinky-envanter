@@ -3,6 +3,21 @@ import { attendanceService, employeeService, projectService } from '../services/
 import { formatter } from '../utils/formatter.js';
 import { Toast } from '../utils/toast.js';
 
+// Helper function to get current user ID
+function getCurrentUserId() {
+    try {
+        const userStr = localStorage.getItem('dinky_user');
+        if (userStr) {
+            const user = JSON.parse(userStr);
+            return user.id || null;
+        }
+        return null;
+    } catch (error) {
+        console.error('Getting user ID error:', error);
+        return null;
+    }
+}
+
 let currentAttendanceData = [];
 let modifiedRecords = new Set();
 
@@ -230,15 +245,21 @@ window.saveAttendance = async function() {
         
         modifiedRecords.forEach(index => {
             const record = currentAttendanceData[index];
-            recordsToSave.push({
-                id: record.record_id,
+            const recordData = {
                 employee_id: record.employee_id,
                 work_date: record.work_date,
                 status: record.status,
                 project_id: record.project_id,
                 overtime_hours: record.overtime_hours || 0,
-                created_by: getCurrentUserId() || null
-            });
+                created_by: getCurrentUserId()
+            };
+            
+            // Only include ID if it exists (for updates)
+            if (record.record_id && record.record_id !== 'new') {
+                recordData.id = record.record_id;
+            }
+            
+            recordsToSave.push(recordData);
         });
 
         const { error } = await attendanceService.upsert(recordsToSave);
