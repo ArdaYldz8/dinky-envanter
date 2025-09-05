@@ -109,9 +109,12 @@ export async function loadDashboard() {
         await loadCharts();
         await loadLegacyWidgets();
         
-        // Setup real-time updates (30 seconds interval)
-        setInterval(refreshDashboard, 30000);
-    }, 100);
+        // Setup real-time updates (30 seconds interval) - only if elements exist
+        const kpiContainer = document.getElementById('kpiContainer');
+        if (kpiContainer) {
+            setInterval(refreshDashboard, 30000);
+        }
+    }, 200);
 }
 
 // Load KPI Cards
@@ -401,7 +404,11 @@ async function loadAttendanceTrendChart(period = 'week') {
             attendanceTrendChart.updateOptions(options);
         } else {
             attendanceTrendChart = new ApexCharts(chartElement, options);
-            attendanceTrendChart.render();
+            try {
+                await attendanceTrendChart.render();
+            } catch (error) {
+                console.error('Chart render error:', error);
+            }
         }
         
     } catch (error) {
@@ -500,7 +507,11 @@ async function loadProjectDistributionChart() {
             projectDistributionChart.updateOptions(options);
         } else {
             projectDistributionChart = new ApexCharts(chartElement, options);
-            projectDistributionChart.render();
+            try {
+                await projectDistributionChart.render();
+            } catch (error) {
+                console.error('Chart render error:', error);
+            }
         }
         
     } catch (error) {
@@ -636,7 +647,11 @@ async function loadStockMovementChart() {
             stockMovementChart.updateOptions(options);
         } else {
             stockMovementChart = new ApexCharts(chartElement, options);
-            stockMovementChart.render();
+            try {
+                await stockMovementChart.render();
+            } catch (error) {
+                console.error('Chart render error:', error);
+            }
         }
         
     } catch (error) {
@@ -729,13 +744,25 @@ async function loadLegacyWidgets() {
 
 // Refresh Dashboard (for real-time updates)
 async function refreshDashboard() {
+    // Check if we're still on dashboard page
+    if (!document.getElementById('kpiContainer')) {
+        console.log('Dashboard not active, skipping refresh');
+        return;
+    }
+    
     console.log('Refreshing dashboard data...');
     await loadKPICards();
     
     // Update charts without re-rendering
-    if (attendanceTrendChart) await loadAttendanceTrendChart();
-    if (projectDistributionChart) await loadProjectDistributionChart();
-    if (stockMovementChart) await loadStockMovementChart();
+    if (attendanceTrendChart && document.querySelector("#attendanceTrendChart")) {
+        await loadAttendanceTrendChart();
+    }
+    if (projectDistributionChart && document.querySelector("#projectDistributionChart")) {
+        await loadProjectDistributionChart();
+    }
+    if (stockMovementChart && document.querySelector("#stockMovementChart")) {
+        await loadStockMovementChart();
+    }
     
     await loadLegacyWidgets();
 }
