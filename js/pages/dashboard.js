@@ -404,7 +404,7 @@ async function loadAttendanceTrendChart(period = 'week') {
         // Render or update chart
         const chartElement = document.querySelector("#attendanceTrendChart");
         if (!chartElement) {
-            console.error('Attendance chart element not found');
+            // Silently return if element doesn't exist (page may have changed)
             return;
         }
         chartElement.innerHTML = ''; // Clear loading
@@ -507,7 +507,7 @@ async function loadProjectDistributionChart() {
         
         const chartElement = document.querySelector("#projectDistributionChart");
         if (!chartElement) {
-            console.error('Project distribution chart element not found');
+            // Silently return if element doesn't exist (page may have changed)
             return;
         }
         chartElement.innerHTML = ''; // Clear loading
@@ -647,7 +647,7 @@ async function loadStockMovementChart() {
         
         const chartElement = document.querySelector("#stockMovementChart");
         if (!chartElement) {
-            console.error('Stock movement chart element not found');
+            // Silently return if element doesn't exist (page may have changed)
             return;
         }
         chartElement.innerHTML = ''; // Clear loading

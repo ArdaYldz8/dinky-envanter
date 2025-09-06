@@ -191,12 +191,13 @@ export const attendanceService = {
                 }
             } else {
                 // Check if record exists for this employee and date
-                const { data: existing } = await supabase
+                const { data: existingRecords } = await supabase
                     .from('attendance_records')
                     .select('id')
                     .eq('employee_id', record.employee_id)
-                    .eq('work_date', record.work_date)
-                    .single();
+                    .eq('work_date', record.work_date);
+                
+                const existing = existingRecords && existingRecords.length > 0 ? existingRecords[0] : null;
                 
                 if (existing) {
                     // Update existing
