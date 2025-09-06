@@ -167,19 +167,28 @@ export const attendanceService = {
         for (const record of records) {
             if (record.id) {
                 // Update existing record
-                const { data, error } = await supabase
-                    .from('attendance_records')
-                    .update({
-                        status: record.status,
-                        project_id: record.project_id,
-                        overtime_hours: record.overtime_hours,
-                        created_by: record.created_by
-                    })
-                    .eq('id', record.id)
-                    .select();
-                    
-                if (error) errors.push(error);
-                else if (data) results.push(...data);
+                try {
+                    const { data, error } = await supabase
+                        .from('attendance_records')
+                        .update({
+                            status: record.status,
+                            project_id: record.project_id || null,
+                            overtime_hours: record.overtime_hours || 0,
+                            created_by: record.created_by || null
+                        })
+                        .eq('id', record.id)
+                        .select('*');
+                        
+                    if (error) {
+                        console.error('Update error for ID:', record.id, error);
+                        errors.push(error);
+                    } else if (data && data.length > 0) {
+                        results.push(...data);
+                    }
+                } catch (err) {
+                    console.error('Update exception:', err);
+                    errors.push(err);
+                }
             } else {
                 // Check if record exists for this employee and date
                 const { data: existing } = await supabase
@@ -195,24 +204,41 @@ export const attendanceService = {
                         .from('attendance_records')
                         .update({
                             status: record.status,
-                            project_id: record.project_id,
-                            overtime_hours: record.overtime_hours,
-                            created_by: record.created_by
+                            project_id: record.project_id || null,
+                            overtime_hours: record.overtime_hours || 0,
+                            created_by: record.created_by || null
                         })
                         .eq('id', existing.id)
-                        .select();
+                        .select('*');
                         
-                    if (error) errors.push(error);
-                    else if (data) results.push(...data);
+                    if (error) {
+                        console.error('Update existing error:', error);
+                        errors.push(error);
+                    } else if (data && data.length > 0) {
+                        results.push(...data);
+                    }
                 } else {
-                    // Insert new
+                    // Insert new (clean record without id field)
+                    const newRecord = {
+                        employee_id: record.employee_id,
+                        work_date: record.work_date,
+                        status: record.status,
+                        project_id: record.project_id || null,
+                        overtime_hours: record.overtime_hours || 0,
+                        created_by: record.created_by || null
+                    };
+                    
                     const { data, error } = await supabase
                         .from('attendance_records')
-                        .insert([record])
-                        .select();
+                        .insert([newRecord])
+                        .select('*');
                         
-                    if (error) errors.push(error);
-                    else if (data) results.push(...data);
+                    if (error) {
+                        console.error('Insert error:', error);
+                        errors.push(error);
+                    } else if (data && data.length > 0) {
+                        results.push(...data);
+                    }
                 }
             }
         }

@@ -9,7 +9,13 @@ function getCurrentUserId() {
         const userStr = localStorage.getItem('dinky_user');
         if (userStr) {
             const user = JSON.parse(userStr);
-            return user.id || null;
+            // Check if ID is a valid UUID format
+            const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+            if (user.id && uuidRegex.test(user.id)) {
+                // For now, return null since these UUIDs don't exist in users table
+                // In production, these should be real user IDs from the database
+                return null; 
+            }
         }
         return null;
     } catch (error) {
@@ -251,7 +257,7 @@ window.saveAttendance = async function() {
                 status: record.status,
                 project_id: record.project_id || null,
                 overtime_hours: parseFloat(record.overtime_hours) || 0.00,
-                created_by: getCurrentUserId() || null
+                created_by: null // Always null for now since we don't have users in DB
             };
             
             // Only include ID if it exists (for updates)
