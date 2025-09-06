@@ -47,17 +47,19 @@ export async function loadStock() {
                 <table class="table">
                     <thead>
                         <tr>
-                            <th>Ürün Kodu</th>
-                            <th>Ürün Adı</th>
+                            <th>Stok Kodu</th>
+                            <th>Ürün</th>
+                            <th>Adet</th>
+                            <th>Ağırlık (Tanesi)</th>
+                            <th>Toplam Ağırlık</th>
+                            <th>Kalan Stok</th>
                             <th>Barkod</th>
-                            <th>Birim</th>
-                            <th>Mevcut Stok</th>
                             <th>İşlemler</th>
                         </tr>
                     </thead>
                     <tbody id="stockTableBody">
                         <tr>
-                            <td colspan="6" class="text-center">Yükleniyor...</td>
+                            <td colspan="8" class="text-center">Yükleniyor...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -78,13 +80,18 @@ async function loadProducts() {
         const tbody = document.getElementById('stockTableBody');
         
         if (products && products.length > 0) {
-            tbody.innerHTML = products.map(product => `
+            tbody.innerHTML = products.map(product => {
+                const unitWeight = product.unit_weight || 0;
+                const totalWeight = (product.current_stock || 0) * unitWeight;
+                return `
                 <tr data-id="${product.id}">
                     <td>${product.product_code || '-'}</td>
                     <td><strong>${product.product_name}</strong></td>
+                    <td>${formatter.number(product.current_stock || 0, 0)}</td>
+                    <td>${formatter.number(unitWeight, 2)} kg</td>
+                    <td>${formatter.number(totalWeight, 2)} kg</td>
+                    <td>${formatter.number(product.current_stock || 0, 0)}</td>
                     <td><span class="barcode-cell">${product.barcode || '-'}</span></td>
-                    <td>${product.unit}</td>
-                    <td>${formatter.stock(product.current_stock)} ${product.unit}</td>
                     <td>
                         <button class="btn btn-sm btn-primary" onclick="window.openStockMovementModal('${product.id}')" title="Stok Hareketi">
                             <i class="fas fa-exchange-alt"></i>
@@ -103,9 +110,9 @@ async function loadProducts() {
                         </button>
                     </td>
                 </tr>
-            `).join('');
+            `}).join('');
         } else {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center">Ürün bulunamadı.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center">Ürün bulunamadı.</td></tr>';
         }
     } catch (error) {
         console.error('Ürünler yüklenirken hata:', error);
@@ -166,6 +173,11 @@ window.openProductModal = function(productId = null) {
                     </select>
                 </div>
                 
+                <div class="form-group">
+                    <label>Birim Ağırlık (kg)</label>
+                    <input type="number" id="unitWeight" class="form-control" min="0" step="0.01" placeholder="0.00">
+                </div>
+                
                 ${!isEdit ? `
                     <div class="form-group">
                         <label>Başlangıç Stok Miktarı</label>
@@ -208,6 +220,7 @@ async function loadProductData(productId) {
         document.getElementById('productCode').value = product.product_code || '';
         document.getElementById('productBarcode').value = product.barcode || '';
         document.getElementById('unit').value = product.unit;
+        document.getElementById('unitWeight').value = product.unit_weight || '';
     } catch (error) {
         Toast.error('Ürün bilgileri yüklenirken hata oluştu');
     }
@@ -220,6 +233,7 @@ async function saveProduct(productId, modal) {
             product_code: document.getElementById('productCode').value || null,
             barcode: document.getElementById('productBarcode').value || null,
             unit: document.getElementById('unit').value,
+            unit_weight: parseFloat(document.getElementById('unitWeight').value) || 0,
             min_stock_level: 0
         };
 

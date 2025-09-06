@@ -165,7 +165,7 @@ async function loadKPICards() {
         // KPI Card HTML
         const kpiContainer = document.getElementById('kpiContainer');
         if (!kpiContainer) {
-            console.error('KPI container not found');
+            // Silently return if not on dashboard page
             return;
         }
         kpiContainer.innerHTML = `
