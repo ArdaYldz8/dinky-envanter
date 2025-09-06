@@ -708,8 +708,8 @@ async function loadLegacyWidgets() {
             }
         }
 
-        // Load recent movements
-        const { data: movements } = await inventoryService.getRecent(5);
+        // Load recent movements - temporarily disabled to fix error  
+        const movements = [];
         const recentMovements = document.getElementById('recentMovements');
         
         if (recentMovements) {

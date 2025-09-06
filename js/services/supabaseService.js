@@ -434,9 +434,21 @@ export const inventoryService = {
     },
 
     async create(movement) {
+        // Clean movement object to ensure no undefined values
+        const cleanMovement = {
+            product_id: movement.product_id,
+            type: movement.type,
+            quantity: movement.quantity,
+            movement_date: movement.movement_date,
+            employee_id: movement.employee_id || null,
+            project_id: movement.project_id || null,
+            description: movement.description || null,
+            created_by: movement.created_by || null
+        };
+        
         const { data, error } = await supabase
             .from('inventory_movements')
-            .insert([movement])
+            .insert(cleanMovement)
             .select('*')
             .single();
         return { data, error };
