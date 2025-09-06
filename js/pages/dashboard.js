@@ -7,6 +7,7 @@ import { Toast } from '../utils/toast.js';
 let attendanceTrendChart = null;
 let projectDistributionChart = null;
 let stockMovementChart = null;
+let dashboardRefreshInterval = null;
 
 export async function loadDashboard() {
     const content = document.getElementById('mainContent');
@@ -103,6 +104,12 @@ export async function loadDashboard() {
         </div>
     `;
 
+    // Clear any existing interval
+    if (dashboardRefreshInterval) {
+        clearInterval(dashboardRefreshInterval);
+        dashboardRefreshInterval = null;
+    }
+    
     // Wait for DOM to be fully rendered before loading data
     setTimeout(async () => {
         await loadKPICards();
@@ -112,7 +119,9 @@ export async function loadDashboard() {
         // Setup real-time updates (30 seconds interval) - only if elements exist
         const kpiContainer = document.getElementById('kpiContainer');
         if (kpiContainer) {
-            setInterval(refreshDashboard, 30000);
+            dashboardRefreshInterval = setInterval(refreshDashboard, 30000);
+            // Also expose to window for cleanup
+            window.dashboardRefreshInterval = dashboardRefreshInterval;
         }
     }, 200);
 }

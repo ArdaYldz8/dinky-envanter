@@ -249,9 +249,9 @@ window.saveAttendance = async function() {
                 employee_id: record.employee_id,
                 work_date: record.work_date,
                 status: record.status,
-                project_id: record.project_id,
-                overtime_hours: record.overtime_hours || 0,
-                created_by: getCurrentUserId()
+                project_id: record.project_id || null,
+                overtime_hours: parseFloat(record.overtime_hours) || 0.00,
+                created_by: getCurrentUserId() || null
             };
             
             // Only include ID if it exists (for updates)

@@ -160,11 +160,67 @@ export const attendanceService = {
     },
 
     async upsert(records) {
-        const { data, error } = await supabase
-            .from('attendance_records')
-            .upsert(records, { onConflict: 'employee_id,work_date' })
-            .select();
-        return { data, error };
+        // Since there's no unique constraint, we need to handle upsert manually
+        const results = [];
+        const errors = [];
+        
+        for (const record of records) {
+            if (record.id) {
+                // Update existing record
+                const { data, error } = await supabase
+                    .from('attendance_records')
+                    .update({
+                        status: record.status,
+                        project_id: record.project_id,
+                        overtime_hours: record.overtime_hours,
+                        created_by: record.created_by
+                    })
+                    .eq('id', record.id)
+                    .select();
+                    
+                if (error) errors.push(error);
+                else if (data) results.push(...data);
+            } else {
+                // Check if record exists for this employee and date
+                const { data: existing } = await supabase
+                    .from('attendance_records')
+                    .select('id')
+                    .eq('employee_id', record.employee_id)
+                    .eq('work_date', record.work_date)
+                    .single();
+                
+                if (existing) {
+                    // Update existing
+                    const { data, error } = await supabase
+                        .from('attendance_records')
+                        .update({
+                            status: record.status,
+                            project_id: record.project_id,
+                            overtime_hours: record.overtime_hours,
+                            created_by: record.created_by
+                        })
+                        .eq('id', existing.id)
+                        .select();
+                        
+                    if (error) errors.push(error);
+                    else if (data) results.push(...data);
+                } else {
+                    // Insert new
+                    const { data, error } = await supabase
+                        .from('attendance_records')
+                        .insert([record])
+                        .select();
+                        
+                    if (error) errors.push(error);
+                    else if (data) results.push(...data);
+                }
+            }
+        }
+        
+        return { 
+            data: results.length > 0 ? results : null, 
+            error: errors.length > 0 ? errors[0] : null 
+        };
     },
 
     async delete(id) {

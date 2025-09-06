@@ -153,6 +153,14 @@ async function navigateTo(page) {
         return;
     }
     
+    // Clear dashboard interval if leaving dashboard
+    if (currentPage === 'dashboard' && page !== 'dashboard') {
+        if (window.dashboardRefreshInterval) {
+            clearInterval(window.dashboardRefreshInterval);
+            window.dashboardRefreshInterval = null;
+        }
+    }
+    
     // Update current page
     currentPage = page;
     
