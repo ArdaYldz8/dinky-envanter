@@ -1,5 +1,5 @@
 // Dashboard Page with Charts and KPIs
-import { dashboardService, productService, inventoryService, supabase } from '../services/supabaseService.js';
+import { dashboardService, productService, supabase } from '../services/supabaseService.js';
 import { formatter } from '../utils/formatter.js';
 import { Toast } from '../utils/toast.js';
 
@@ -708,7 +708,7 @@ async function loadLegacyWidgets() {
             }
         }
 
-        // Load recent movements - temporarily disabled to fix error  
+        // Load recent movements - completely disabled
         const movements = [];
         const recentMovements = document.getElementById('recentMovements');
         
