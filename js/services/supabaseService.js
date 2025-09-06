@@ -96,6 +96,13 @@ export const projectService = {
             .select()
             .single();
         return { data, error };
+    },
+    async delete(id) {
+        const { error } = await supabase
+            .from('projects')
+            .delete()
+            .eq('id', id);
+        return { error };
     }
 };
 

@@ -132,6 +132,9 @@ async function loadProjects() {
                                 onclick="window.toggleProjectStatus('${project.id}', '${project.status}')">
                             <i class="fas fa-${project.status === 'Aktif' ? 'stop' : 'play'}"></i>
                         </button>
+                        <button class="btn btn-sm btn-danger" onclick="window.deleteProject('${project.id}')">
+                            <i class="fas fa-trash"></i>
+                        </button>
                     </td>
                 </tr>
             `).join('');
@@ -396,6 +399,26 @@ window.toggleProjectStatus = async function(projectId, currentStatus) {
             await loadProjects();
         } catch (error) {
             Toast.error('Durum güncellenirken hata oluştu');
+        }
+    }
+};
+
+// Delete project
+window.deleteProject = async function(projectId) {
+    const confirmed = await Modal.confirm(
+        'Bu projeyi silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.',
+        'Proje Sil'
+    );
+
+    if (confirmed) {
+        try {
+            const { error } = await projectService.delete(projectId);
+            if (error) throw error;
+            
+            Toast.success('Proje silindi');
+            await loadProjects();
+        } catch (error) {
+            Toast.error('Proje silinirken hata oluştu. Proje kullanımda olabilir.');
         }
     }
 };
