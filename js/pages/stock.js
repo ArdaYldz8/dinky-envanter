@@ -91,17 +91,19 @@ async function loadProducts() {
                     <td>${formatter.number(unitWeight, 2)} kg</td>
                     <td>${formatter.number(totalWeight, 2)} kg</td>
                     <td>${formatter.number(product.current_stock || 0, 0)}</td>
-                    <td><span class="barcode-cell">${product.barcode || '-'}</span></td>
+                    <td><span class="barcode-cell">-</span></td>
                     <td>
                         <button class="btn btn-sm btn-primary" onclick="window.openStockMovementModal('${product.id}')" title="Stok Hareketi">
                             <i class="fas fa-exchange-alt"></i>
                         </button>
-                        ${product.barcode ? 
+                        <!-- Barcode button disabled until database column is added
+                        ${false ? 
                             `<button class="btn btn-sm btn-success" onclick="window.openBarcodeModal('${product.id}')" title="Barkod İşlemi">
                                 <i class="fas fa-barcode"></i>
                             </button>` :
                             ''
                         }
+                        -->
                         <button class="btn btn-sm btn-info" onclick="window.viewProductMovements('${product.id}')" title="Hareket Geçmişi">
                             <i class="fas fa-history"></i>
                         </button>
@@ -155,10 +157,12 @@ window.openProductModal = function(productId = null) {
                     <input type="text" id="productCode" class="form-control">
                 </div>
                 
+                <!-- Barcode field temporarily disabled until database column is added
                 <div class="form-group">
                     <label>Barkod Numarası</label>
                     <input type="text" id="productBarcode" class="form-control">
                 </div>
+                -->
                 
                 <div class="form-group">
                     <label>Birim <span class="required">*</span></label>
@@ -218,7 +222,7 @@ async function loadProductData(productId) {
         
         document.getElementById('productName').value = product.product_name;
         document.getElementById('productCode').value = product.product_code || '';
-        document.getElementById('productBarcode').value = product.barcode || '';
+        // document.getElementById('productBarcode').value = product.barcode || '';
         document.getElementById('unit').value = product.unit;
         document.getElementById('unitWeight').value = product.unit_weight || '';
     } catch (error) {
@@ -231,7 +235,7 @@ async function saveProduct(productId, modal) {
         const productData = {
             product_name: document.getElementById('productName').value,
             product_code: document.getElementById('productCode').value || null,
-            barcode: document.getElementById('productBarcode').value || null,
+            // barcode: document.getElementById('productBarcode').value || null,
             unit: document.getElementById('unit').value,
             unit_weight: parseFloat(document.getElementById('unitWeight').value) || 0,
             min_stock_level: 0

@@ -36,7 +36,7 @@ export const employeeService = {
         const { data, error } = await supabase
             .from('employees')
             .insert([employee])
-            .select()
+            .select('*')
             .single();
         return { data, error };
     },
@@ -46,7 +46,7 @@ export const employeeService = {
             .from('employees')
             .update(updates)
             .eq('id', id)
-            .select()
+            .select('*')
             .single();
         return { data, error };
     },
@@ -83,7 +83,7 @@ export const projectService = {
         const { data, error } = await supabase
             .from('projects')
             .insert([project])
-            .select()
+            .select('*')
             .single();
         return { data, error };
     },
@@ -93,7 +93,7 @@ export const projectService = {
             .from('projects')
             .update(updates)
             .eq('id', id)
-            .select()
+            .select('*')
             .single();
         return { data, error };
     },
@@ -151,7 +151,7 @@ export const attendanceService = {
         const { data, error } = await supabase
             .from('attendance_records')
             .insert([record])
-            .select()
+            .select('*')
             .single();
         return { data, error };
     },
@@ -161,7 +161,7 @@ export const attendanceService = {
             .from('attendance_records')
             .update(updates)
             .eq('id', id)
-            .select()
+            .select('*')
             .single();
         return { data, error };
     },
@@ -296,7 +296,7 @@ export const transactionService = {
         const { data, error } = await supabase
             .from('transactions')
             .insert([transaction])
-            .select()
+            .select('*')
             .single();
         return { data, error };
     },
@@ -306,7 +306,7 @@ export const transactionService = {
             .from('transactions')
             .update(updates)
             .eq('id', id)
-            .select()
+            .select('*')
             .single();
         return { data, error };
     },
@@ -368,7 +368,7 @@ export const productService = {
         const { data, error } = await supabase
             .from('products')
             .insert([product])
-            .select()
+            .select('*')
             .single();
         return { data, error };
     },
@@ -378,7 +378,7 @@ export const productService = {
             .from('products')
             .update(updates)
             .eq('id', id)
-            .select()
+            .select('*')
             .single();
         return { data, error };
     },
@@ -437,7 +437,7 @@ export const inventoryService = {
         const { data, error } = await supabase
             .from('inventory_movements')
             .insert([movement])
-            .select()
+            .select('*')
             .single();
         return { data, error };
     },
@@ -447,7 +447,7 @@ export const inventoryService = {
             .from('inventory_movements')
             .update(updates)
             .eq('id', id)
-            .select()
+            .select('*')
             .single();
         return { data, error };
     },
@@ -540,7 +540,7 @@ export const barcodeService = {
             .from('products')
             .update({ barcode })
             .eq('id', productId)
-            .select()
+            .select('*')
             .single();
         return { data, error };
     },
