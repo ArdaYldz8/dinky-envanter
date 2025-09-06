@@ -81,6 +81,9 @@ async function loadEmployees() {
                         <button class="btn btn-sm btn-danger" onclick="window.toggleEmployee('${emp.id}', ${emp.is_active})">
                             <i class="fas fa-${emp.is_active ? 'ban' : 'check'}"></i>
                         </button>
+                        <button class="btn btn-sm btn-danger" onclick="window.deleteEmployee('${emp.id}')" style="margin-left: 5px;">
+                            <i class="fas fa-trash"></i>
+                        </button>
                     </td>
                 </tr>
             `).join('');
@@ -411,6 +414,26 @@ window.toggleEmployee = async function(employeeId, currentStatus) {
             await loadEmployees();
         } catch (error) {
             Toast.error('Durum güncellenirken hata oluştu');
+        }
+    }
+};
+
+// Delete Employee
+window.deleteEmployee = async function(employeeId) {
+    const confirmed = await Modal.confirm(
+        'Bu personeli silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.',
+        'Personel Sil'
+    );
+
+    if (confirmed) {
+        try {
+            const { error } = await employeeService.delete(employeeId);
+            if (error) throw error;
+            
+            Toast.success('Personel silindi');
+            await loadEmployees();
+        } catch (error) {
+            Toast.error('Personel silinirken hata oluştu. Personel kayıtları mevcut olabilir.');
         }
     }
 };
