@@ -397,12 +397,7 @@ export const inventoryService = {
     async getAll() {
         const { data, error } = await supabase
             .from('inventory_movements')
-            .select(`
-                *,
-                products (id, product_name, unit),
-                employees (id, full_name),
-                projects (id, project_name)
-            `)
+            .select('id, product_id, type, quantity, movement_date, description, created_at')
             .order('movement_date', { ascending: false })
             .limit(100);
         return { data, error };
@@ -411,11 +406,7 @@ export const inventoryService = {
     async getByProduct(productId) {
         const { data, error } = await supabase
             .from('inventory_movements')
-            .select(`
-                *,
-                employees (id, full_name),
-                projects (id, project_name)
-            `)
+            .select('id, type, quantity, movement_date, description, created_at')
             .eq('product_id', productId)
             .order('movement_date', { ascending: false });
         return { data, error };
@@ -424,10 +415,7 @@ export const inventoryService = {
     async getRecent(limit = 5) {
         const { data, error } = await supabase
             .from('inventory_movements')
-            .select(`
-                *,
-                products (id, product_name, unit)
-            `)
+            .select('id, product_id, type, quantity, movement_date, created_at')
             .order('created_at', { ascending: false })
             .limit(limit);
         return { data, error };
@@ -449,7 +437,7 @@ export const inventoryService = {
         const { data, error } = await supabase
             .from('inventory_movements')
             .insert(cleanMovement)
-            .select('*')
+            .select('id, product_id, type, quantity, movement_date, description, created_at')
             .single();
         return { data, error };
     },
@@ -459,7 +447,7 @@ export const inventoryService = {
             .from('inventory_movements')
             .update(updates)
             .eq('id', id)
-            .select('*')
+            .select('id, product_id, type, quantity, movement_date, description, created_at')
             .single();
         return { data, error };
     },
