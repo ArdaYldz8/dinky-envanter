@@ -58,6 +58,11 @@ async function loadEmployees() {
         
         const tbody = document.getElementById('employeeTableBody');
         
+        if (!tbody) {
+            console.error('employeeTableBody element not found');
+            return;
+        }
+        
         if (employees && employees.length > 0) {
             tbody.innerHTML = employees.map(emp => `
                 <tr data-id="${emp.id}">
