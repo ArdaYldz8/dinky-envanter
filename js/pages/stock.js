@@ -17,7 +17,8 @@ function getCurrentUserName() {
 
 function getCurrentUserId() {
     const user = getCurrentUser();
-    return user ? user.id : '';
+    // Return null instead of string for UUID fields
+    return user && user.id && user.id.includes('-') ? user.id : null;
 }
 
 
@@ -453,7 +454,8 @@ async function processStockMovement(product, modal) {
     try {
         const type = document.getElementById('movementType').value;
         const quantity = parseFloat(document.getElementById('movementQuantity').value);
-        const employeeId = document.getElementById('movementEmployeeId').value || null;
+        // Don't use employeeId from the form as it's not a valid UUID
+        const employeeId = null; // Set to null for now
         const projectId = document.getElementById('movementProjectId').value || null;
         const description = document.getElementById('movementDescription').value || null;
         
@@ -484,7 +486,7 @@ async function processStockMovement(product, modal) {
             project_id: projectId,
             description: description,
             movement_date: new Date().toISOString().split('T')[0],
-            created_by: getCurrentUserId() || null
+            created_by: null // Set to null to avoid UUID format error
         });
         
         if (error) {
