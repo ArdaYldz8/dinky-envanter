@@ -56,12 +56,11 @@ export async function loadAttendance() {
                             <th>Durum</th>
                             <th>Proje</th>
                             <th>Ek Mesai</th>
-                            <th>Hızlı İşlem</th>
                         </tr>
                     </thead>
                     <tbody id="attendanceTableBody">
                         <tr>
-                            <td colspan="5" class="text-center">Yükleniyor...</td>
+                            <td colspan="4" class="text-center">Yükleniyor...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -151,19 +150,6 @@ async function loadAttendanceData(date) {
                            style="width: 80px; text-align: center;"
                            ${record.status === 'Gelmedi' ? 'disabled' : ''}>
                     <small class="text-muted">ek saat</small>
-                </td>
-                <td>
-                    <div class="quick-actions">
-                        <button class="btn btn-sm btn-success" onclick="window.setAttendanceQuick(${index}, 'Tam Gün')">
-                            <i class="fas fa-check"></i>
-                        </button>
-                        <button class="btn btn-sm btn-warning" onclick="window.setAttendanceQuick(${index}, 'Yarım Gün')">
-                            <i class="fas fa-adjust"></i>
-                        </button>
-                        <button class="btn btn-sm btn-danger" onclick="window.setAttendanceQuick(${index}, 'Gelmedi')">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
                 </td>
             </tr>
         `).join('');

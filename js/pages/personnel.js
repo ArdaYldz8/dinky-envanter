@@ -14,9 +14,6 @@ export async function loadPersonnel() {
                 <button class="btn btn-primary" onclick="window.openEmployeeModal()">
                     <i class="fas fa-plus"></i> Yeni Personel
                 </button>
-                <button class="btn btn-secondary" onclick="window.openTransactionModal()">
-                    <i class="fas fa-money-bill"></i> Avans/Kesinti Ekle
-                </button>
             </div>
         </div>
         
@@ -30,15 +27,16 @@ export async function loadPersonnel() {
                     <thead>
                         <tr>
                             <th>Personel Adı</th>
+                            <th>Birim</th>
                             <th>Günlük Ücret</th>
+                            <th>Aylık Maaş</th>
                             <th>İşe Başlama</th>
-                            <th>Durum</th>
                             <th>İşlemler</th>
                         </tr>
                     </thead>
                     <tbody id="employeeTableBody">
                         <tr>
-                            <td colspan="5" class="text-center">Yükleniyor...</td>
+                            <td colspan="6" class="text-center">Yükleniyor...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -69,13 +67,12 @@ async function loadEmployees() {
                     <td>
                         <strong>${emp.full_name}</strong>
                     </td>
-                    <td>${formatter.currency(emp.daily_wage)}</td>
-                    <td>${formatter.date(emp.start_date)}</td>
                     <td>
-                        <span class="badge ${emp.is_active ? 'badge-success' : 'badge-secondary'}">
-                            ${emp.is_active ? 'Aktif' : 'Pasif'}
-                        </span>
+                        <span class="badge badge-info">${emp.department || '-'}</span>
                     </td>
+                    <td>${formatter.currency(emp.daily_wage)}</td>
+                    <td><strong>${formatter.currency(emp.daily_wage * 30)}</strong></td>
+                    <td>${formatter.date(emp.start_date)}</td>
                     <td>
                         <button class="btn btn-sm btn-info" onclick="window.viewEmployeeDetails('${emp.id}')">
                             <i class="fas fa-eye"></i>
@@ -83,17 +80,14 @@ async function loadEmployees() {
                         <button class="btn btn-sm btn-warning" onclick="window.editEmployee('${emp.id}')">
                             <i class="fas fa-edit"></i>
                         </button>
-                        <button class="btn btn-sm btn-danger" onclick="window.toggleEmployee('${emp.id}', ${emp.is_active})">
-                            <i class="fas fa-${emp.is_active ? 'ban' : 'check'}"></i>
-                        </button>
-                        <button class="btn btn-sm btn-danger" onclick="window.deleteEmployee('${emp.id}')" style="margin-left: 5px;">
+                        <button class="btn btn-sm btn-danger" onclick="window.deleteEmployee('${emp.id}')">
                             <i class="fas fa-trash"></i>
                         </button>
                     </td>
                 </tr>
             `).join('');
         } else {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center">Personel bulunamadı.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center">Personel bulunamadı.</td></tr>';
         }
     } catch (error) {
         console.error('Personel yüklenirken hata:', error);
@@ -126,6 +120,11 @@ window.openEmployeeModal = function(employeeId = null) {
                 <div class="form-group">
                     <label>Ad Soyad <span class="required">*</span></label>
                     <input type="text" id="fullName" class="form-control" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Birim/Departman</label>
+                    <input type="text" id="department" class="form-control" placeholder="Örn: İMALAT ŞEFİ">
                 </div>
                 
                 <div class="form-group">
@@ -178,6 +177,7 @@ async function loadEmployeeData(employeeId) {
         if (error) throw error;
         
         document.getElementById('fullName').value = employee.full_name;
+        document.getElementById('department').value = employee.department || '';
         document.getElementById('dailyWage').value = employee.daily_wage;
         document.getElementById('startDate').value = formatter.dateForInput(employee.start_date);
         document.getElementById('isActive').checked = employee.is_active;
@@ -190,6 +190,7 @@ async function saveEmployee(employeeId, modal) {
     try {
         const employeeData = {
             full_name: document.getElementById('fullName').value,
+            department: document.getElementById('department').value || null,
             daily_wage: parseFloat(document.getElementById('dailyWage').value),
             start_date: document.getElementById('startDate').value,
             is_active: document.getElementById('isActive').checked
@@ -328,9 +329,10 @@ window.viewEmployeeDetails = async function(employeeId) {
                 <div class="employee-details">
                     <div class="detail-section">
                         <h4>Personel Bilgileri</h4>
+                        <p><strong>Birim:</strong> <span class="badge badge-info">${employee.department || '-'}</span></p>
                         <p><strong>Günlük Ücret:</strong> ${formatter.currency(employee.daily_wage)}</p>
+                        <p><strong>Aylık Maaş:</strong> <strong>${formatter.currency(employee.daily_wage * 30)}</strong></p>
                         <p><strong>İşe Başlama:</strong> ${formatter.date(employee.start_date)}</p>
-                        <p><strong>Durum:</strong> <span class="badge ${employee.is_active ? 'badge-success' : 'badge-secondary'}">${employee.is_active ? 'Aktif' : 'Pasif'}</span></p>
                     </div>
                     
                     <div class="detail-section">

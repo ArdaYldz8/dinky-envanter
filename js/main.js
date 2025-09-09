@@ -28,7 +28,7 @@ let currentUser = null;
 const rolePermissions = {
     admin: ['dashboard', 'personnel', 'attendance', 'stock', 'barcode', 'reports', 'settings'],
     warehouse: ['dashboard', 'stock', 'barcode'],
-    accounting: ['dashboard', 'personnel', 'attendance', 'reports']
+    accounting: ['dashboard', 'personnel', 'attendance', 'reports', 'settings']
 };
 
 // Check authentication
