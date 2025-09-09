@@ -53,14 +53,13 @@ export async function loadStock() {
                             <th>Adet</th>
                             <th>Ağırlık (Tanesi)</th>
                             <th>Toplam Ağırlık</th>
-                            <th>Kalan Stok</th>
                             <th>Barkod</th>
                             <th>İşlemler</th>
                         </tr>
                     </thead>
                     <tbody id="stockTableBody">
                         <tr>
-                            <td colspan="8" class="text-center">Yükleniyor...</td>
+                            <td colspan="7" class="text-center">Yükleniyor...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -91,7 +90,6 @@ async function loadProducts() {
                     <td>${formatter.number(product.current_stock || 0, 0)}</td>
                     <td>${formatter.number(unitWeight, 2)} kg</td>
                     <td>${formatter.number(totalWeight, 2)} kg</td>
-                    <td>${formatter.number(product.current_stock || 0, 0)}</td>
                     <td><span class="barcode-cell">-</span></td>
                     <td>
                         <button class="btn btn-sm btn-primary" onclick="window.openStockMovementModal('${product.id}')" title="Stok Hareketi">
@@ -115,7 +113,7 @@ async function loadProducts() {
                 </tr>
             `}).join('');
         } else {
-            tbody.innerHTML = '<tr><td colspan="8" class="text-center">Ürün bulunamadı.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center">Ürün bulunamadı.</td></tr>';
         }
     } catch (error) {
         console.error('Ürünler yüklenirken hata:', error);

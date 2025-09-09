@@ -71,7 +71,7 @@ async function loadEmployees() {
                         <span class="badge badge-info">${emp.department || '-'}</span>
                     </td>
                     <td>${formatter.currency(emp.daily_wage)}</td>
-                    <td><strong>${formatter.currency(emp.daily_wage * 30)}</strong></td>
+                    <td><strong>${formatter.currency(emp.monthly_salary || emp.daily_wage * 26)}</strong></td>
                     <td>${formatter.date(emp.start_date)}</td>
                     <td>
                         <button class="btn btn-sm btn-info" onclick="window.viewEmployeeDetails('${emp.id}')">
@@ -128,8 +128,14 @@ window.openEmployeeModal = function(employeeId = null) {
                 </div>
                 
                 <div class="form-group">
-                    <label>Günlük Ücret (₺) <span class="required">*</span></label>
-                    <input type="number" id="dailyWage" class="form-control" min="0" step="0.01" required>
+                    <label>Aylık Maaş (₺) <span class="required">*</span></label>
+                    <input type="number" id="monthlySalary" class="form-control" min="0" step="1" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Günlük Ücret (₺)</label>
+                    <input type="number" id="dailyWage" class="form-control" min="0" step="0.01" readonly>
+                    <small class="form-text text-muted">Otomatik hesaplanır (Aylık Maaş ÷ 26)</small>
                 </div>
                 
                 <div class="form-group">
@@ -164,6 +170,16 @@ window.openEmployeeModal = function(employeeId = null) {
         await saveEmployee(employeeId, modal);
     });
 
+    // Auto-calculate daily wage when monthly salary changes
+    const monthlySalaryInput = document.getElementById('monthlySalary');
+    const dailyWageInput = document.getElementById('dailyWage');
+    
+    monthlySalaryInput.addEventListener('input', (e) => {
+        const monthlySalary = parseFloat(e.target.value) || 0;
+        const dailyWage = (monthlySalary / 26).toFixed(2);
+        dailyWageInput.value = dailyWage;
+    });
+
     if (isEdit) {
         loadEmployeeData(employeeId);
     } else {
@@ -178,6 +194,7 @@ async function loadEmployeeData(employeeId) {
         
         document.getElementById('fullName').value = employee.full_name;
         document.getElementById('department').value = employee.department || '';
+        document.getElementById('monthlySalary').value = employee.monthly_salary || '';
         document.getElementById('dailyWage').value = employee.daily_wage;
         document.getElementById('startDate').value = formatter.dateForInput(employee.start_date);
         document.getElementById('isActive').checked = employee.is_active;
@@ -191,6 +208,7 @@ async function saveEmployee(employeeId, modal) {
         const employeeData = {
             full_name: document.getElementById('fullName').value,
             department: document.getElementById('department').value || null,
+            monthly_salary: parseFloat(document.getElementById('monthlySalary').value),
             daily_wage: parseFloat(document.getElementById('dailyWage').value),
             start_date: document.getElementById('startDate').value,
             is_active: document.getElementById('isActive').checked
@@ -331,7 +349,7 @@ window.viewEmployeeDetails = async function(employeeId) {
                         <h4>Personel Bilgileri</h4>
                         <p><strong>Birim:</strong> <span class="badge badge-info">${employee.department || '-'}</span></p>
                         <p><strong>Günlük Ücret:</strong> ${formatter.currency(employee.daily_wage)}</p>
-                        <p><strong>Aylık Maaş:</strong> <strong>${formatter.currency(employee.daily_wage * 30)}</strong></p>
+                        <p><strong>Aylık Maaş:</strong> <strong>${formatter.currency(employee.monthly_salary || employee.daily_wage * 26)}</strong></p>
                         <p><strong>İşe Başlama:</strong> ${formatter.date(employee.start_date)}</p>
                     </div>
                     

@@ -147,6 +147,45 @@ export const attendanceService = {
         return { data, error };
     },
 
+    async getAll() {
+        const { data, error } = await supabase
+            .from('attendance_records')
+            .select(`
+                *,
+                employees!inner (id, full_name),
+                projects (id, project_name)
+            `)
+            .order('work_date', { ascending: false });
+        return { data, error };
+    },
+
+    async getTodayAttendance() {
+        const today = new Date().toISOString().split('T')[0];
+        const { data, error } = await supabase
+            .from('attendance_records')
+            .select(`
+                *,
+                employees!inner (id, full_name),
+                projects (id, project_name)
+            `)
+            .eq('work_date', today);
+        return { data, error };
+    },
+
+    async getByDateRange(startDate, endDate) {
+        const { data, error } = await supabase
+            .from('attendance_records')
+            .select(`
+                *,
+                employees!inner (id, full_name),
+                projects (id, project_name)
+            `)
+            .gte('work_date', startDate)
+            .lte('work_date', endDate)
+            .order('work_date');
+        return { data, error };
+    },
+
     async create(record) {
         const { data, error } = await supabase
             .from('attendance_records')
@@ -415,7 +454,10 @@ export const inventoryService = {
     async getRecent(limit = 5) {
         const { data, error } = await supabase
             .from('inventory_movements')
-            .select('id, product_id, type, quantity, movement_date, created_at')
+            .select(`
+                id, product_id, type, quantity, movement_date, created_at,
+                products (product_name, unit)
+            `)
             .order('created_at', { ascending: false })
             .limit(limit);
         return { data, error };
