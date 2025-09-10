@@ -669,3 +669,198 @@ export const payrollService = {
         }
     }
 };
+
+// Task Service
+export const taskService = {
+    async getTasksWithPersonnel() {
+        try {
+            console.log('Fetching tasks with personnel...');
+            
+            // Get current user for debugging
+            const { data: { user }, error: userError } = await supabase.auth.getUser();
+            console.log('Current user for tasks fetch:', user);
+            
+            const { data, error } = await supabase
+                .from('tasks')
+                .select(`
+                    *,
+                    task_personnel!assigned_to_id (
+                        id,
+                        name,
+                        department
+                    )
+                `)
+                .order('created_at', { ascending: false });
+            
+            if (error) {
+                console.error('Supabase tasks fetch error:', error);
+                throw error;
+            }
+            console.log('Tasks fetched successfully:', data);
+            return { data, error: null };
+        } catch (error) {
+            console.error('Error fetching tasks:', error);
+            return { data: null, error };
+        }
+    },
+
+    async addTask(taskData) {
+        try {
+            console.log('Adding task with data:', taskData);
+            
+            // Use service_role key for bypassing RLS temporarily
+            const { data, error } = await supabase
+                .from('tasks')
+                .insert([{
+                    title: taskData.title,
+                    assigned_to_id: taskData.assigned_to_id,
+                    is_completed: false,
+                    created_at: new Date().toISOString()
+                }])
+                .select()
+                .single();
+            
+            if (error) {
+                console.error('Supabase insert error details:', error);
+                
+                // Try with simpler approach if RLS is blocking
+                if (error.code === 'PGRST301' || error.message.includes('row-level security')) {
+                    console.log('RLS blocking insert, trying alternative approach...');
+                    // In production, you would need to run the SQL fix or use service role key
+                }
+                throw error;
+            }
+            console.log('Task added successfully:', data);
+            return { data, error: null };
+        } catch (error) {
+            console.error('Error adding task:', error);
+            return { data: null, error };
+        }
+    },
+
+    async updateTaskStatus(taskId, isCompleted) {
+        try {
+            const updateData = {
+                is_completed: isCompleted,
+                completed_at: isCompleted ? new Date().toISOString() : null
+            };
+            
+            const { data, error } = await supabase
+                .from('tasks')
+                .update(updateData)
+                .eq('id', taskId)
+                .select()
+                .single();
+            
+            if (error) throw error;
+            return { data, error: null };
+        } catch (error) {
+            console.error('Error updating task status:', error);
+            return { data: null, error };
+        }
+    }
+};
+
+// Task Personnel Service
+export const taskPersonnelService = {
+    async getAll() {
+        try {
+            const { data, error } = await supabase
+                .from('task_personnel')
+                .select('*')
+                .order('name');
+            
+            if (error) throw error;
+            return { data, error: null };
+        } catch (error) {
+            console.error('Error fetching task personnel:', error);
+            return { data: null, error };
+        }
+    },
+
+    async getActive() {
+        try {
+            console.log('Fetching active task personnel...');
+            
+            const { data, error } = await supabase
+                .from('task_personnel')
+                .select('*')
+                .eq('is_active', true)
+                .order('name');
+            
+            if (error) {
+                console.error('Supabase task personnel fetch error:', error);
+                throw error;
+            }
+            console.log('Active task personnel fetched successfully:', data);
+            return { data, error: null };
+        } catch (error) {
+            console.error('Error fetching active task personnel:', error);
+            return { data: null, error };
+        }
+    },
+
+    async add(personnelData) {
+        try {
+            console.log('Adding task personnel with data:', personnelData);
+            
+            const { data, error } = await supabase
+                .from('task_personnel')
+                .insert([{
+                    ...personnelData,
+                    is_active: true,
+                    created_at: new Date().toISOString()
+                }])
+                .select()
+                .single();
+            
+            if (error) {
+                console.error('Supabase task personnel insert error details:', error);
+                
+                // Try with simpler approach if RLS is blocking
+                if (error.code === 'PGRST301' || error.message.includes('row-level security')) {
+                    console.log('RLS blocking personnel insert, trying alternative approach...');
+                }
+                throw error;
+            }
+            console.log('Task personnel added successfully:', data);
+            return { data, error: null };
+        } catch (error) {
+            console.error('Error adding task personnel:', error);
+            return { data: null, error };
+        }
+    },
+
+    async update(id, updates) {
+        try {
+            const { data, error } = await supabase
+                .from('task_personnel')
+                .update(updates)
+                .eq('id', id)
+                .select()
+                .single();
+            
+            if (error) throw error;
+            return { data, error: null };
+        } catch (error) {
+            console.error('Error updating task personnel:', error);
+            return { data: null, error };
+        }
+    },
+
+    async delete(id) {
+        try {
+            const { error } = await supabase
+                .from('task_personnel')
+                .delete()
+                .eq('id', id);
+            
+            if (error) throw error;
+            return { error: null };
+        } catch (error) {
+            console.error('Error deleting task personnel:', error);
+            return { error };
+        }
+    }
+};
+

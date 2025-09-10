@@ -235,7 +235,19 @@ async function renderAttendanceChart() {
 
         // Render chart
         const chartElement = container.querySelector('.chart-widget__body');
+        if (!chartElement) {
+            console.error('Chart element not found for attendance chart');
+            return;
+        }
+        
         chartElement.innerHTML = '';
+        
+        // Check if ApexCharts is available
+        if (typeof ApexCharts === 'undefined') {
+            console.error('ApexCharts not loaded');
+            chartElement.innerHTML = '<div class="error-message">Grafik kütüphanesi yüklenemedi</div>';
+            return;
+        }
         
         attendanceTrendChart = new ApexCharts(chartElement, chartOptions);
         await attendanceTrendChart.render();
@@ -364,9 +376,21 @@ async function renderProjectDensityChart() {
 
         // Render chart
         const chartElement = container.querySelector('.sidebar-widget__body');
+        if (!chartElement) {
+            console.error('Chart element not found for project density chart');
+            return;
+        }
+        
         chartElement.innerHTML = '';
         
         if (projectNames.length > 0) {
+            // Check if ApexCharts is available
+            if (typeof ApexCharts === 'undefined') {
+                console.error('ApexCharts not loaded');
+                chartElement.innerHTML = '<div class="error-message">Grafik kütüphanesi yüklenemedi</div>';
+                return;
+            }
+            
             projectDensityChart = new ApexCharts(chartElement, chartOptions);
             await projectDensityChart.render();
         } else {

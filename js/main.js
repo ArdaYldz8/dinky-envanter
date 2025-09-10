@@ -7,6 +7,7 @@ import { loadStock } from './pages/stock.js';
 import { loadBarcode } from './pages/barcode.js';
 import { loadReports } from './pages/reports.js';
 import { loadSettings } from './pages/settings.js';
+import { loadTasks } from './pages/tasks.js';
 import { Toast } from './utils/toast.js';
 
 // Router configuration
@@ -17,6 +18,7 @@ const routes = {
     'stock': loadStock,
     'barcode': loadBarcode,
     'reports': loadReports,
+    'tasks': loadTasks,
     'settings': loadSettings
 };
 
@@ -26,7 +28,7 @@ let currentUser = null;
 
 // Role-based permissions
 const rolePermissions = {
-    admin: ['dashboard', 'personnel', 'attendance', 'stock', 'barcode', 'reports', 'settings'],
+    admin: ['dashboard', 'personnel', 'attendance', 'stock', 'barcode', 'reports', 'tasks', 'settings'],
     warehouse: ['dashboard', 'stock', 'barcode'],
     accounting: ['dashboard', 'personnel', 'attendance', 'reports', 'settings']
 };
