@@ -45,6 +45,9 @@
     padding: 16px 20px;
     border-bottom: 1px solid #dee2e6;
     border-radius: 6px 6px 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .task-card-header h5 {

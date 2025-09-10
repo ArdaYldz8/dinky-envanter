@@ -1,5 +1,5 @@
 // Task Management Page
-import { taskService, taskPersonnelService } from '../services/supabaseService.js';
+import { taskService, taskPersonnelService, supabase } from '../services/supabaseService.js';
 import { Toast } from '../utils/toast.js';
 
 // Global filter state
@@ -154,6 +154,9 @@ export async function loadTasks() {
                     <div class="task-card" style="margin-top: 20px;">
                         <div class="task-card-header">
                             <h5>Mevcut Personeller</h5>
+                            <button id="orphanedTasksBtn" class="task-btn task-btn-warning" style="font-size: 12px; padding: 4px 8px;">
+                                <i class="fas fa-broom"></i> Atanmamış Görevleri Temizle
+                            </button>
                         </div>
                         <div class="task-card-body" style="max-height: 400px; overflow-y: auto;">
                             <div id="personelListesi">
@@ -177,6 +180,11 @@ export async function loadTasks() {
         // Veri yükle
         console.log('Loading initial data...');
         await loadData();
+        
+        // Sayfa yüklendiğinde mevcut atanmamış görevleri otomatik temizle
+        setTimeout(() => {
+            otomatikAtanmamisGorevleriTemizle();
+        }, 1000);
         
         console.log('✓ Tasks page loaded successfully');
         
@@ -270,6 +278,19 @@ function setupEventListeners() {
         console.log('✓ Clear filter button listener added');
     } else {
         console.error('✗ clearFilterBtn element not found');
+    }
+    
+    // Orphaned tasks cleanup button
+    const orphanedTasksBtn = document.getElementById('orphanedTasksBtn');
+    if (orphanedTasksBtn) {
+        orphanedTasksBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            console.log('Orphaned tasks cleanup button clicked');
+            temizleAtanmamisGorevler();
+        });
+        console.log('✓ Orphaned tasks cleanup button listener added');
+    } else {
+        console.error('✗ orphanedTasksBtn element not found');
     }
     
     console.log('Event listeners setup completed');
@@ -655,23 +676,49 @@ window.personelDurumDegistir = async function(personelId, aktif) {
     }
 };
 
-// Personel sil
+// Personel sil - CASCADE DELETE
 window.personelSil = async function(personelId) {
-    if (!confirm('Bu personeli silmek istediğinizden emin misiniz?')) {
-        return;
-    }
-    
     try {
+        const { data: gorevler } = await taskService.getTasksWithPersonnel();
+        const personelGorevleri = gorevler ? gorevler.filter(g => g.assigned_to_id === personelId) : [];
+        
+        let confirmMessage = 'Bu personeli silmek istediğinizden emin misiniz?';
+        if (personelGorevleri.length > 0) {
+            confirmMessage = `Bu personelin ${personelGorevleri.length} adet görevi var. Personel ve görevleri birlikte silinecek. Devam etmek istediğinizden emin misiniz?\n\nSilinecek görevler:\n${personelGorevleri.slice(0, 3).map(g => `- ${g.title}`).join('\n')}${personelGorevleri.length > 3 ? '\n... ve ' + (personelGorevleri.length - 3) + ' tane daha' : ''}`;
+        }
+        
+        if (!confirm(confirmMessage)) {
+            return;
+        }
+        
+        // Önce personelin görevlerini sil
+        if (personelGorevleri.length > 0) {
+            console.log(`Deleting ${personelGorevleri.length} tasks for personnel...`);
+            for (const gorev of personelGorevleri) {
+                try {
+                    await supabase
+                        .from('tasks')
+                        .delete()
+                        .eq('id', gorev.id);
+                } catch (err) {
+                    console.error('Error deleting task:', gorev.id, err);
+                }
+            }
+        }
+        
+        // Sonra personeli sil
         const { error } = await taskPersonnelService.delete(personelId);
         
         if (error) throw error;
         
-        Toast.success('Personel silindi');
+        Toast.success(`Personel ve ${personelGorevleri.length} görevi silindi`);
         
         await Promise.all([
             modalPersonelListesiYukle(),
             personelListesiYukle(),
-            personelFilterYukle()
+            personelFilterYukle(),
+            bekleyenGorevleriYukle(),
+            tamamlananGorevleriYukle()
         ]);
         
     } catch (error) {
@@ -744,4 +791,106 @@ async function clearPersonnelFilter() {
         bekleyenGorevleriYukle(),
         tamamlananGorevleriYukle()
     ]);
+}
+
+// Atanmamış görevleri temizle
+async function temizleAtanmamisGorevler() {
+    try {
+        const { data: gorevler } = await taskService.getTasksWithPersonnel();
+        const atanmamisGorevler = gorevler ? gorevler.filter(g => !g.assigned_to_id || g.task_personnel === null) : [];
+        
+        if (atanmamisGorevler.length === 0) {
+            Toast.info('Atanmamış görev bulunmuyor');
+            return;
+        }
+        
+        const confirmMessage = `${atanmamisGorevler.length} adet atanmamış görev var. Bu görevleri silmek istediğinizden emin misiniz?\n\nSilinecek görevler:\n${atanmamisGorevler.slice(0, 5).map(g => `- ${g.title}`).join('\n')}${atanmamisGorevler.length > 5 ? '\n... ve ' + (atanmamisGorevler.length - 5) + ' tane daha' : ''}`;
+        
+        if (!confirm(confirmMessage)) {
+            return;
+        }
+        
+        // Atanmamış görevleri sil
+        console.log(`Deleting ${atanmamisGorevler.length} orphaned tasks...`);
+        let deletedCount = 0;
+        
+        for (const gorev of atanmamisGorevler) {
+            try {
+                const { error } = await supabase
+                    .from('tasks')
+                    .delete()
+                    .eq('id', gorev.id);
+                    
+                if (!error) {
+                    deletedCount++;
+                }
+            } catch (err) {
+                console.error('Error deleting task:', gorev.id, err);
+            }
+        }
+        
+        if (deletedCount > 0) {
+            Toast.success(`${deletedCount} atanmamış görev silindi`);
+            
+            // Görev listelerini yenile
+            await Promise.all([
+                bekleyenGorevleriYukle(),
+                tamamlananGorevleriYukle()
+            ]);
+        } else {
+            Toast.error('Görevler silinemedi');
+        }
+        
+    } catch (error) {
+        console.error('Atanmamış görev temizleme hatası:', error);
+        Toast.error('Temizlik işlemi başarısız');
+    }
+}
+
+// Otomatik atanmamış görev temizleme (sessiz)
+async function otomatikAtanmamisGorevleriTemizle() {
+    try {
+        console.log('Checking for orphaned tasks...');
+        const { data: gorevler } = await taskService.getTasksWithPersonnel();
+        const atanmamisGorevler = gorevler ? gorevler.filter(g => !g.assigned_to_id || g.task_personnel === null) : [];
+        
+        if (atanmamisGorevler.length === 0) {
+            console.log('No orphaned tasks found');
+            return;
+        }
+        
+        console.log(`Found ${atanmamisGorevler.length} orphaned tasks, cleaning up...`);
+        
+        // Atanmamış görevleri sessizce sil
+        let deletedCount = 0;
+        
+        for (const gorev of atanmamisGorevler) {
+            try {
+                const { error } = await supabase
+                    .from('tasks')
+                    .delete()
+                    .eq('id', gorev.id);
+                    
+                if (!error) {
+                    deletedCount++;
+                }
+            } catch (err) {
+                console.error('Error deleting orphaned task:', gorev.id, err);
+            }
+        }
+        
+        if (deletedCount > 0) {
+            console.log(`Automatically cleaned ${deletedCount} orphaned tasks`);
+            Toast.info(`${deletedCount} atanmamış görev temizlendi`);
+            
+            // Görev listelerini yenile
+            await Promise.all([
+                bekleyenGorevleriYukle(),
+                tamamlananGorevleriYukle()
+            ]);
+        }
+        
+    } catch (error) {
+        console.error('Otomatik temizlik hatası:', error);
+    }
 }

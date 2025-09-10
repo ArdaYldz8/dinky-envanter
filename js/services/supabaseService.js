@@ -758,6 +758,31 @@ export const taskService = {
             console.error('Error updating task status:', error);
             return { data: null, error };
         }
+    },
+
+    async updateTaskAssignment(taskId, assignedToId) {
+        try {
+            console.log('Updating task assignment:', taskId, 'to', assignedToId);
+            
+            const { data, error } = await supabase
+                .from('tasks')
+                .update({
+                    assigned_to_id: assignedToId
+                })
+                .eq('id', taskId)
+                .select()
+                .single();
+            
+            if (error) {
+                console.error('Supabase task assignment update error:', error);
+                throw error;
+            }
+            console.log('Task assignment updated successfully:', data);
+            return { data, error: null };
+        } catch (error) {
+            console.error('Error updating task assignment:', error);
+            return { data: null, error };
+        }
     }
 };
 
