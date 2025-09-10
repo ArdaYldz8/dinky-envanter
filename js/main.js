@@ -1,5 +1,5 @@
 // Main Application Router and Controller
-import { testConnection } from './services/supabaseClient.js';
+import { testConnection, supabase } from './services/supabaseClient.js';
 import { loadDashboard } from './pages/dashboard.js';
 import { loadPersonnel } from './pages/personnel.js';
 import { loadAttendance } from './pages/attendance.js';
@@ -95,9 +95,44 @@ function hasPagePermission(page) {
     return allowedPages.includes(page);
 }
 
-// Logout function
-window.logout = function() {
+// Activity logging function
+async function logActivity(actionType, tableName, recordId, oldValues, newValues, description) {
+    try {
+        if (!currentUser) return;
+        
+        await supabase.rpc('log_activity', {
+            p_user_id: currentUser.id,
+            p_user_name: currentUser.name,
+            p_user_role: currentUser.role,
+            p_action_type: actionType,
+            p_table_name: tableName,
+            p_record_id: recordId,
+            p_old_values: oldValues,
+            p_new_values: newValues,
+            p_description: description
+        });
+    } catch (error) {
+        console.error('Activity logging error:', error);
+    }
+}
+
+// Logout function with activity logging
+window.logout = async function() {
     if (confirm('Çıkmak istediğinizden emin misiniz?')) {
+        try {
+            // Log logout activity
+            await logActivity(
+                'LOGOUT',
+                null,
+                null,
+                null,
+                null,
+                `${currentUser.name} sistemden çıkış yaptı`
+            );
+        } catch (error) {
+            console.error('Logout activity logging failed:', error);
+        }
+        
         localStorage.removeItem('dinky_user');
         window.location.href = 'login.html';
     }

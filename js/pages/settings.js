@@ -1,8 +1,19 @@
 // Settings Page
-import { projectService, productService } from '../services/supabaseService.js';
+import { projectService, productService, supabase } from '../services/supabaseService.js';
 import { formatter } from '../utils/formatter.js';
 import { Toast } from '../utils/toast.js';
 import { Modal } from '../components/Modal.js';
+
+// Helper functions for current user
+function getCurrentUser() {
+    const userStr = localStorage.getItem('dinky_user');
+    return userStr ? JSON.parse(userStr) : null;
+}
+
+function isAdmin() {
+    const user = getCurrentUser();
+    return user && user.role === 'admin';
+}
 
 export async function loadSettings() {
     const content = document.getElementById('mainContent');
@@ -21,6 +32,11 @@ export async function loadSettings() {
                     <li class="tab-item" data-tab="products">
                         <i class="fas fa-box"></i> Ürünler
                     </li>
+                    ${isAdmin() ? `
+                    <li class="tab-item" data-tab="activity">
+                        <i class="fas fa-history"></i> Aktivite İzleme
+                    </li>
+                    ` : ''}
                 </ul>
                 
                 <div class="tab-content">
@@ -78,6 +94,184 @@ export async function loadSettings() {
                             </table>
                         </div>
                     </div>
+                    
+                    ${isAdmin() ? `
+                    <div class="tab-pane" id="activityTab">
+                        <div class="section-header">
+                            <h2><i class="fas fa-shield-alt"></i> Aktivite İzleme (Admin)</h2>
+                            <p class="text-muted">Tüm kullanıcı işlemlerini buradan takip edebilirsiniz.</p>
+                        </div>
+                        
+                        <!-- Activity Summary Cards -->
+                        <div class="row mb-4" id="activitySummary">
+                            <div class="col-md-3">
+                                <div class="card bg-primary text-white">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between">
+                                            <div>
+                                                <h3 class="card-title" id="totalActivities">-</h3>
+                                                <p class="card-text">Toplam Aktivite (7 gün)</p>
+                                            </div>
+                                            <i class="fas fa-chart-line fa-2x"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card bg-success text-white">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between">
+                                            <div>
+                                                <h3 class="card-title" id="todayActivities">-</h3>
+                                                <p class="card-text">Bugünkü Aktivite</p>
+                                            </div>
+                                            <i class="fas fa-calendar-day fa-2x"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card bg-warning text-white">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between">
+                                            <div>
+                                                <h6 class="card-title" id="mostActiveUser">-</h6>
+                                                <p class="card-text">En Aktif Kullanıcı</p>
+                                            </div>
+                                            <i class="fas fa-user-star fa-2x"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card bg-info text-white">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between">
+                                            <div>
+                                                <h6 class="card-title" id="mostActiveTable">-</h6>
+                                                <p class="card-text">En Çok Kullanılan Modül</p>
+                                            </div>
+                                            <i class="fas fa-database fa-2x"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Activity Filters -->
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h5><i class="fas fa-filter"></i> Filtreler</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-3">
+                                        <label>Kullanıcı Rolü</label>
+                                        <select class="form-control" id="filterUserRole">
+                                            <option value="">Tümü</option>
+                                            <option value="admin">Admin</option>
+                                            <option value="warehouse">Depocu</option>
+                                            <option value="accounting">Muhasebeci</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label>İşlem Tipi</label>
+                                        <select class="form-control" id="filterActionType">
+                                            <option value="">Tümü</option>
+                                            <option value="CREATE">Ekleme</option>
+                                            <option value="UPDATE">Güncelleme</option>
+                                            <option value="DELETE">Silme</option>
+                                            <option value="LOGIN">Giriş</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label>Modül</label>
+                                        <select class="form-control" id="filterTableName">
+                                            <option value="">Tümü</option>
+                                            <option value="products">Ürünler</option>
+                                            <option value="employees">Personel</option>
+                                            <option value="attendance">Puantaj</option>
+                                            <option value="inventory_movements">Stok Hareketleri</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label>Tarih Aralığı</label>
+                                        <select class="form-control" id="filterDateRange">
+                                            <option value="1">Son 1 gün</option>
+                                            <option value="7" selected>Son 7 gün</option>
+                                            <option value="30">Son 30 gün</option>
+                                            <option value="90">Son 90 gün</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="row mt-3">
+                                    <div class="col-md-12">
+                                        <button class="btn btn-primary" onclick="window.loadActivityLogs()">
+                                            <i class="fas fa-search"></i> Filtrele
+                                        </button>
+                                        <button class="btn btn-secondary ml-2" onclick="window.resetActivityFilters()">
+                                            <i class="fas fa-undo"></i> Temizle
+                                        </button>
+                                        <button class="btn btn-success ml-2" onclick="window.exportActivityLogs()">
+                                            <i class="fas fa-download"></i> Excel'e Aktar
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Activity Logs Table -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h5><i class="fas fa-list"></i> Aktivite Kayıtları</h5>
+                                <div class="float-right">
+                                    <button class="btn btn-sm btn-primary" onclick="window.loadActivityLogs()">
+                                        <i class="fas fa-sync"></i> Yenile
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-striped table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Tarih/Saat</th>
+                                                <th>Kullanıcı</th>
+                                                <th>Rol</th>
+                                                <th>İşlem</th>
+                                                <th>Modül</th>
+                                                <th>Açıklama</th>
+                                                <th>Detay</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="activityLogsTableBody">
+                                            <tr>
+                                                <td colspan="7" class="text-center">
+                                                    <i class="fas fa-spinner fa-spin"></i> Yükleniyor...
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                
+                                <!-- Pagination -->
+                                <div class="d-flex justify-content-between align-items-center mt-3">
+                                    <div>
+                                        <small class="text-muted" id="activityPaginationInfo">-</small>
+                                    </div>
+                                    <div>
+                                        <button class="btn btn-sm btn-secondary" onclick="window.loadActivityLogsPage('prev')" id="prevActivityBtn" disabled>
+                                            <i class="fas fa-chevron-left"></i> Önceki
+                                        </button>
+                                        <button class="btn btn-sm btn-secondary ml-2" onclick="window.loadActivityLogsPage('next')" id="nextActivityBtn">
+                                            Sonraki <i class="fas fa-chevron-right"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    ` : ''}
                 </div>
             </div>
         </div>
@@ -86,6 +280,12 @@ export async function loadSettings() {
     setupTabs();
     await loadProjects();
     await loadProductsSettings();
+    
+    // Load activity monitoring if admin
+    if (isAdmin()) {
+        await loadActivitySummary();
+        await loadActivityLogs();
+    }
 }
 
 function setupTabs() {
@@ -102,6 +302,12 @@ function setupTabs() {
             item.classList.add('active');
             const tabId = item.dataset.tab;
             document.getElementById(`${tabId}Tab`).classList.add('active');
+            
+            // Load activity data when activity tab is activated
+            if (tabId === 'activity' && isAdmin()) {
+                loadActivitySummary();
+                loadActivityLogs();
+            }
         });
     });
 }
@@ -440,5 +646,319 @@ window.deleteProduct = async function(productId) {
         } catch (error) {
             Toast.error('Ürün silinirken hata oluştu. Ürün kullanımda olabilir.');
         }
+    }
+};
+
+// ================================
+// ACTIVITY MONITORING FUNCTIONS
+// ================================
+
+let currentActivityPage = 0;
+const activityPageSize = 25;
+
+// Activity Summary yükleme
+async function loadActivitySummary() {
+    if (!isAdmin()) return;
+    
+    try {
+        const daysBack = parseInt(document.getElementById('filterDateRange')?.value || '7');
+        
+        const { data, error } = await supabase.rpc('get_activity_summary', {
+            days_back: daysBack
+        });
+        
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+            const summary = data[0];
+            document.getElementById('totalActivities').textContent = summary.total_activities || '0';
+            document.getElementById('todayActivities').textContent = summary.today_activities || '0';
+            document.getElementById('mostActiveUser').textContent = summary.most_active_user || 'Yok';
+            document.getElementById('mostActiveTable').textContent = getTableDisplayName(summary.most_active_table) || 'Yok';
+        }
+    } catch (error) {
+        console.error('Activity summary yükleme hatası:', error);
+        Toast.error('Aktivite özeti yüklenirken hata oluştu');
+    }
+}
+
+// Activity Logs yükleme
+async function loadActivityLogs(page = 0) {
+    if (!isAdmin()) return;
+    
+    try {
+        currentActivityPage = page;
+        
+        // Filtreleri al
+        const filterUserRole = document.getElementById('filterUserRole')?.value || null;
+        const filterActionType = document.getElementById('filterActionType')?.value || null;
+        const filterTableName = document.getElementById('filterTableName')?.value || null;
+        const daysBack = parseInt(document.getElementById('filterDateRange')?.value || '7');
+        
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - daysBack);
+        
+        const { data, error } = await supabase.rpc('get_activity_logs', {
+            limit_count: activityPageSize,
+            offset_count: page * activityPageSize,
+            filter_user_role: filterUserRole,
+            filter_action_type: filterActionType,
+            filter_table_name: filterTableName,
+            start_date: startDate.toISOString()
+        });
+        
+        if (error) throw error;
+        
+        const tbody = document.getElementById('activityLogsTableBody');
+        
+        if (data && data.length > 0) {
+            tbody.innerHTML = data.map(log => `
+                <tr>
+                    <td>
+                        <small>${formatDateTime(log.created_at)}</small>
+                    </td>
+                    <td>
+                        <strong>${log.user_name}</strong>
+                    </td>
+                    <td>
+                        <span class="badge ${getRoleBadgeClass(log.user_role)}">
+                            ${getRoleDisplayName(log.user_role)}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge ${getActionBadgeClass(log.action_type)}">
+                            ${getActionDisplayName(log.action_type)}
+                        </span>
+                    </td>
+                    <td>
+                        ${getTableDisplayName(log.table_name)}
+                    </td>
+                    <td>
+                        <small>${log.description}</small>
+                    </td>
+                    <td>
+                        ${log.old_values || log.new_values ? 
+                            `<button class="btn btn-sm btn-info" onclick="window.showActivityDetail('${log.id}', '${log.description}', '${JSON.stringify(log.old_values || {})}', '${JSON.stringify(log.new_values || {})}')">
+                                <i class="fas fa-eye"></i>
+                            </button>` : 
+                            '<span class="text-muted">-</span>'
+                        }
+                    </td>
+                </tr>
+            `).join('');
+            
+            // Pagination güncelle
+            updateActivityPagination(data.length);
+        } else {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="7" class="text-center text-muted">
+                        <i class="fas fa-info-circle"></i> Kayıt bulunamadı
+                    </td>
+                </tr>
+            `;
+            updateActivityPagination(0);
+        }
+        
+    } catch (error) {
+        console.error('Activity logs yükleme hatası:', error);
+        document.getElementById('activityLogsTableBody').innerHTML = `
+            <tr>
+                <td colspan="7" class="text-center text-danger">
+                    <i class="fas fa-exclamation-triangle"></i> Aktivite kayıtları yüklenirken hata oluştu
+                </td>
+            </tr>
+        `;
+        Toast.error('Aktivite kayıtları yüklenirken hata oluştu');
+    }
+}
+
+// Pagination güncelleme
+function updateActivityPagination(recordCount) {
+    const info = document.getElementById('activityPaginationInfo');
+    const prevBtn = document.getElementById('prevActivityBtn');
+    const nextBtn = document.getElementById('nextActivityBtn');
+    
+    const startRecord = (currentActivityPage * activityPageSize) + 1;
+    const endRecord = (currentActivityPage * activityPageSize) + recordCount;
+    
+    info.textContent = `${startRecord}-${endRecord} kayıt gösteriliyor (Sayfa ${currentActivityPage + 1})`;
+    
+    prevBtn.disabled = currentActivityPage === 0;
+    nextBtn.disabled = recordCount < activityPageSize;
+}
+
+// Helper functions
+function formatDateTime(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleString('tr-TR', {
+        day: '2-digit',
+        month: '2-digit', 
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+function getRoleBadgeClass(role) {
+    switch(role) {
+        case 'admin': return 'badge-danger';
+        case 'warehouse': return 'badge-primary';
+        case 'accounting': return 'badge-success';
+        default: return 'badge-secondary';
+    }
+}
+
+function getRoleDisplayName(role) {
+    switch(role) {
+        case 'admin': return 'Admin';
+        case 'warehouse': return 'Depocu';
+        case 'accounting': return 'Muhasebeci';
+        default: return role || 'Sistem';
+    }
+}
+
+function getActionBadgeClass(action) {
+    switch(action) {
+        case 'CREATE': return 'badge-success';
+        case 'UPDATE': return 'badge-warning';
+        case 'DELETE': return 'badge-danger';
+        case 'LOGIN': return 'badge-info';
+        default: return 'badge-secondary';
+    }
+}
+
+function getActionDisplayName(action) {
+    switch(action) {
+        case 'CREATE': return 'Ekleme';
+        case 'UPDATE': return 'Güncelleme';
+        case 'DELETE': return 'Silme';
+        case 'LOGIN': return 'Giriş';
+        case 'LOGOUT': return 'Çıkış';
+        default: return action || 'Bilinmiyor';
+    }
+}
+
+function getTableDisplayName(table) {
+    switch(table) {
+        case 'products': return 'Ürünler';
+        case 'employees': return 'Personel';
+        case 'attendance': return 'Puantaj';
+        case 'inventory_movements': return 'Stok Hareketleri';
+        case 'projects': return 'Projeler';
+        default: return table || '-';
+    }
+}
+
+// Global window functions
+window.loadActivityLogs = function() {
+    loadActivityLogs(0);
+    loadActivitySummary();
+};
+
+window.loadActivityLogsPage = function(direction) {
+    if (direction === 'next') {
+        loadActivityLogs(currentActivityPage + 1);
+    } else if (direction === 'prev' && currentActivityPage > 0) {
+        loadActivityLogs(currentActivityPage - 1);
+    }
+};
+
+window.resetActivityFilters = function() {
+    document.getElementById('filterUserRole').value = '';
+    document.getElementById('filterActionType').value = '';
+    document.getElementById('filterTableName').value = '';
+    document.getElementById('filterDateRange').value = '7';
+    loadActivityLogs(0);
+    loadActivitySummary();
+};
+
+window.showActivityDetail = function(logId, description, oldValues, newValues) {
+    try {
+        const old = JSON.parse(oldValues);
+        const newVal = JSON.parse(newValues);
+        
+        let detailContent = `<h6>İşlem: ${description}</h6><hr>`;
+        
+        if (Object.keys(old).length > 0) {
+            detailContent += `<h6>Eski Değerler:</h6>`;
+            detailContent += `<pre class="bg-light p-2 rounded"><code>${JSON.stringify(old, null, 2)}</code></pre>`;
+        }
+        
+        if (Object.keys(newVal).length > 0) {
+            detailContent += `<h6>Yeni Değerler:</h6>`;
+            detailContent += `<pre class="bg-light p-2 rounded"><code>${JSON.stringify(newVal, null, 2)}</code></pre>`;
+        }
+        
+        Modal.show({
+            title: 'Aktivite Detayları',
+            content: detailContent,
+            size: 'lg'
+        });
+        
+    } catch (error) {
+        Toast.error('Detay gösterilirken hata oluştu');
+    }
+};
+
+window.exportActivityLogs = async function() {
+    try {
+        Toast.info('Excel dosyası hazırlanıyor...');
+        
+        // Filtreleri al
+        const filterUserRole = document.getElementById('filterUserRole')?.value || null;
+        const filterActionType = document.getElementById('filterActionType')?.value || null;
+        const filterTableName = document.getElementById('filterTableName')?.value || null;
+        const daysBack = parseInt(document.getElementById('filterDateRange')?.value || '7');
+        
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - daysBack);
+        
+        const { data, error } = await supabase.rpc('get_activity_logs', {
+            limit_count: 1000, // Excel için maksimum kayıt
+            offset_count: 0,
+            filter_user_role: filterUserRole,
+            filter_action_type: filterActionType,
+            filter_table_name: filterTableName,
+            start_date: startDate.toISOString()
+        });
+        
+        if (error) throw error;
+        
+        if (!data || data.length === 0) {
+            Toast.warning('Dışa aktarılacak kayıt bulunamadı');
+            return;
+        }
+        
+        // CSV formatında hazırla
+        const headers = ['Tarih/Saat', 'Kullanıcı', 'Rol', 'İşlem', 'Modül', 'Açıklama'];
+        const csvContent = [
+            headers.join(','),
+            ...data.map(log => [
+                formatDateTime(log.created_at),
+                log.user_name,
+                getRoleDisplayName(log.user_role),
+                getActionDisplayName(log.action_type),
+                getTableDisplayName(log.table_name),
+                `"${log.description.replace(/"/g, '""')}"`
+            ].join(','))
+        ].join('\\n');
+        
+        // Dosyayı indir
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', `aktivite_kayitlari_${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        Toast.success('Excel dosyası indirildi');
+        
+    } catch (error) {
+        console.error('Excel export hatası:', error);
+        Toast.error('Excel dosyası hazırlanırken hata oluştu');
     }
 };
