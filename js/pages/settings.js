@@ -96,177 +96,157 @@ export async function loadSettings() {
                     </div>
                     
                     ${isAdmin() ? `
-                    <div class="tab-pane" id="activityTab">
-                        <div class="section-header">
-                            <h2><i class="fas fa-shield-alt"></i> Aktivite İzleme (Admin)</h2>
-                            <p class="text-muted">Tüm kullanıcı işlemlerini buradan takip edebilirsiniz.</p>
+                    <div class="tab-pane activity-monitoring" id="activityTab">
+                        <div class="activity-section-header">
+                            <h2><i class="fas fa-shield-alt"></i> Aktivite İzleme</h2>
+                            <p>Tüm kullanıcı işlemlerini buradan takip edebilirsiniz. Sistem genelinde yapılan tüm değişiklikler kayıt altına alınır.</p>
                         </div>
                         
                         <!-- Activity Summary Cards -->
-                        <div class="row mb-4" id="activitySummary">
-                            <div class="col-md-3">
-                                <div class="card bg-primary text-white">
-                                    <div class="card-body">
-                                        <div class="d-flex justify-content-between">
-                                            <div>
-                                                <h3 class="card-title" id="totalActivities">-</h3>
-                                                <p class="card-text">Toplam Aktivite (7 gün)</p>
-                                            </div>
-                                            <i class="fas fa-chart-line fa-2x"></i>
-                                        </div>
+                        <div class="activity-stats-grid" id="activitySummary">
+                            <div class="activity-stat-card primary">
+                                <div class="stat-card-content">
+                                    <div class="stat-card-info">
+                                        <h3 id="totalActivities">-</h3>
+                                        <p>Toplam Aktivite (7 gün)</p>
+                                    </div>
+                                    <div class="stat-card-icon primary">
+                                        <i class="fas fa-chart-line"></i>
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-md-3">
-                                <div class="card bg-success text-white">
-                                    <div class="card-body">
-                                        <div class="d-flex justify-content-between">
-                                            <div>
-                                                <h3 class="card-title" id="todayActivities">-</h3>
-                                                <p class="card-text">Bugünkü Aktivite</p>
-                                            </div>
-                                            <i class="fas fa-calendar-day fa-2x"></i>
-                                        </div>
+                            <div class="activity-stat-card success">
+                                <div class="stat-card-content">
+                                    <div class="stat-card-info">
+                                        <h3 id="todayActivities">-</h3>
+                                        <p>Bugünkü Aktivite</p>
+                                    </div>
+                                    <div class="stat-card-icon success">
+                                        <i class="fas fa-calendar-day"></i>
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-md-3">
-                                <div class="card bg-warning text-white">
-                                    <div class="card-body">
-                                        <div class="d-flex justify-content-between">
-                                            <div>
-                                                <h6 class="card-title" id="mostActiveUser">-</h6>
-                                                <p class="card-text">En Aktif Kullanıcı</p>
-                                            </div>
-                                            <i class="fas fa-user-star fa-2x"></i>
-                                        </div>
+                            <div class="activity-stat-card warning">
+                                <div class="stat-card-content">
+                                    <div class="stat-card-info">
+                                        <h3 id="mostActiveUser">-</h3>
+                                        <p>En Aktif Kullanıcı</p>
+                                    </div>
+                                    <div class="stat-card-icon warning">
+                                        <i class="fas fa-user-star"></i>
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-md-3">
-                                <div class="card bg-info text-white">
-                                    <div class="card-body">
-                                        <div class="d-flex justify-content-between">
-                                            <div>
-                                                <h6 class="card-title" id="mostActiveTable">-</h6>
-                                                <p class="card-text">En Çok Kullanılan Modül</p>
-                                            </div>
-                                            <i class="fas fa-database fa-2x"></i>
-                                        </div>
+                            <div class="activity-stat-card info">
+                                <div class="stat-card-content">
+                                    <div class="stat-card-info">
+                                        <h3 id="mostActiveTable">-</h3>
+                                        <p>En Çok Kullanılan Modül</p>
+                                    </div>
+                                    <div class="stat-card-icon info">
+                                        <i class="fas fa-database"></i>
                                     </div>
                                 </div>
                             </div>
                         </div>
                         
                         <!-- Activity Filters -->
-                        <div class="card mb-4">
-                            <div class="card-header">
-                                <h5><i class="fas fa-filter"></i> Filtreler</h5>
+                        <div class="activity-filters">
+                            <h5><i class="fas fa-filter"></i> Filtreler</h5>
+                            <div class="filter-grid">
+                                <div class="filter-group">
+                                    <label>Kullanıcı Rolü</label>
+                                    <select class="filter-control" id="filterUserRole">
+                                        <option value="">Tümü</option>
+                                        <option value="admin">Admin</option>
+                                        <option value="warehouse">Depocu</option>
+                                        <option value="accounting">Muhasebeci</option>
+                                    </select>
+                                </div>
+                                <div class="filter-group">
+                                    <label>İşlem Tipi</label>
+                                    <select class="filter-control" id="filterActionType">
+                                        <option value="">Tümü</option>
+                                        <option value="CREATE">Ekleme</option>
+                                        <option value="UPDATE">Güncelleme</option>
+                                        <option value="DELETE">Silme</option>
+                                        <option value="LOGIN">Giriş</option>
+                                    </select>
+                                </div>
+                                <div class="filter-group">
+                                    <label>Modül</label>
+                                    <select class="filter-control" id="filterTableName">
+                                        <option value="">Tümü</option>
+                                        <option value="products">Ürünler</option>
+                                        <option value="employees">Personel</option>
+                                        <option value="attendance">Puantaj</option>
+                                        <option value="inventory_movements">Stok Hareketleri</option>
+                                    </select>
+                                </div>
+                                <div class="filter-group">
+                                    <label>Tarih Aralığı</label>
+                                    <select class="filter-control" id="filterDateRange">
+                                        <option value="1">Son 1 gün</option>
+                                        <option value="7" selected>Son 7 gün</option>
+                                        <option value="30">Son 30 gün</option>
+                                        <option value="90">Son 90 gün</option>
+                                    </select>
+                                </div>
                             </div>
-                            <div class="card-body">
-                                <div class="row">
-                                    <div class="col-md-3">
-                                        <label>Kullanıcı Rolü</label>
-                                        <select class="form-control" id="filterUserRole">
-                                            <option value="">Tümü</option>
-                                            <option value="admin">Admin</option>
-                                            <option value="warehouse">Depocu</option>
-                                            <option value="accounting">Muhasebeci</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <label>İşlem Tipi</label>
-                                        <select class="form-control" id="filterActionType">
-                                            <option value="">Tümü</option>
-                                            <option value="CREATE">Ekleme</option>
-                                            <option value="UPDATE">Güncelleme</option>
-                                            <option value="DELETE">Silme</option>
-                                            <option value="LOGIN">Giriş</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <label>Modül</label>
-                                        <select class="form-control" id="filterTableName">
-                                            <option value="">Tümü</option>
-                                            <option value="products">Ürünler</option>
-                                            <option value="employees">Personel</option>
-                                            <option value="attendance">Puantaj</option>
-                                            <option value="inventory_movements">Stok Hareketleri</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <label>Tarih Aralığı</label>
-                                        <select class="form-control" id="filterDateRange">
-                                            <option value="1">Son 1 gün</option>
-                                            <option value="7" selected>Son 7 gün</option>
-                                            <option value="30">Son 30 gün</option>
-                                            <option value="90">Son 90 gün</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="row mt-3">
-                                    <div class="col-md-12">
-                                        <button class="btn btn-primary" onclick="window.loadActivityLogs()">
-                                            <i class="fas fa-search"></i> Filtrele
-                                        </button>
-                                        <button class="btn btn-secondary ml-2" onclick="window.resetActivityFilters()">
-                                            <i class="fas fa-undo"></i> Temizle
-                                        </button>
-                                        <button class="btn btn-success ml-2" onclick="window.exportActivityLogs()">
-                                            <i class="fas fa-download"></i> Excel'e Aktar
-                                        </button>
-                                    </div>
-                                </div>
+                            <div class="filter-actions">
+                                <button class="activity-btn activity-btn-primary" onclick="window.loadActivityLogs()">
+                                    <i class="fas fa-search"></i> Filtrele
+                                </button>
+                                <button class="activity-btn activity-btn-secondary" onclick="window.resetActivityFilters()">
+                                    <i class="fas fa-undo"></i> Temizle
+                                </button>
+                                <button class="activity-btn activity-btn-success" onclick="window.exportActivityLogs()">
+                                    <i class="fas fa-download"></i> Excel'e Aktar
+                                </button>
                             </div>
                         </div>
                         
                         <!-- Activity Logs Table -->
-                        <div class="card">
-                            <div class="card-header">
+                        <div class="activity-logs-container">
+                            <div class="activity-table-header">
                                 <h5><i class="fas fa-list"></i> Aktivite Kayıtları</h5>
-                                <div class="float-right">
-                                    <button class="btn btn-sm btn-primary" onclick="window.loadActivityLogs()">
-                                        <i class="fas fa-sync"></i> Yenile
-                                    </button>
-                                </div>
+                                <button class="activity-btn activity-btn-primary" onclick="window.loadActivityLogs()">
+                                    <i class="fas fa-sync"></i> Yenile
+                                </button>
                             </div>
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table class="table table-striped table-sm">
-                                        <thead>
-                                            <tr>
-                                                <th>Tarih/Saat</th>
-                                                <th>Kullanıcı</th>
-                                                <th>Rol</th>
-                                                <th>İşlem</th>
-                                                <th>Modül</th>
-                                                <th>Açıklama</th>
-                                                <th>Detay</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="activityLogsTableBody">
-                                            <tr>
-                                                <td colspan="7" class="text-center">
-                                                    <i class="fas fa-spinner fa-spin"></i> Yükleniyor...
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                                
-                                <!-- Pagination -->
-                                <div class="d-flex justify-content-between align-items-center mt-3">
-                                    <div>
-                                        <small class="text-muted" id="activityPaginationInfo">-</small>
-                                    </div>
-                                    <div>
-                                        <button class="btn btn-sm btn-secondary" onclick="window.loadActivityLogsPage('prev')" id="prevActivityBtn" disabled>
-                                            <i class="fas fa-chevron-left"></i> Önceki
-                                        </button>
-                                        <button class="btn btn-sm btn-secondary ml-2" onclick="window.loadActivityLogsPage('next')" id="nextActivityBtn">
-                                            Sonraki <i class="fas fa-chevron-right"></i>
-                                        </button>
-                                    </div>
+                            <div class="table-responsive">
+                                <table class="activity-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Tarih/Saat</th>
+                                            <th>Kullanıcı</th>
+                                            <th>Rol</th>
+                                            <th>İşlem</th>
+                                            <th>Modül</th>
+                                            <th>Açıklama</th>
+                                            <th>Detay</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="activityLogsTableBody">
+                                        <tr>
+                                            <td colspan="7" class="activity-loading">
+                                                <i class="fas fa-spinner activity-loading-spinner"></i> Yükleniyor...
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <!-- Pagination -->
+                            <div class="activity-pagination">
+                                <div class="activity-pagination-info" id="activityPaginationInfo">-</div>
+                                <div class="activity-pagination-controls">
+                                    <button class="pagination-btn" onclick="window.loadActivityLogsPage('prev')" id="prevActivityBtn" disabled>
+                                        <i class="fas fa-chevron-left"></i> Önceki
+                                    </button>
+                                    <button class="pagination-btn" onclick="window.loadActivityLogsPage('next')" id="nextActivityBtn">
+                                        Sonraki <i class="fas fa-chevron-right"></i>
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -715,18 +695,18 @@ async function loadActivityLogs(page = 0) {
             tbody.innerHTML = data.map(log => `
                 <tr>
                     <td>
-                        <small>${formatDateTime(log.created_at)}</small>
+                        <div class="activity-datetime">${formatDateTime(log.created_at)}</div>
                     </td>
                     <td>
-                        <strong>${log.user_name}</strong>
+                        <div class="activity-user-name">${log.user_name}</div>
                     </td>
                     <td>
-                        <span class="badge ${getRoleBadgeClass(log.user_role)}">
+                        <span class="activity-badge ${getRoleBadgeClass(log.user_role)}">
                             ${getRoleDisplayName(log.user_role)}
                         </span>
                     </td>
                     <td>
-                        <span class="badge ${getActionBadgeClass(log.action_type)}">
+                        <span class="activity-badge ${getActionBadgeClass(log.action_type)}">
                             ${getActionDisplayName(log.action_type)}
                         </span>
                     </td>
@@ -734,11 +714,11 @@ async function loadActivityLogs(page = 0) {
                         ${getTableDisplayName(log.table_name)}
                     </td>
                     <td>
-                        <small>${log.description}</small>
+                        <div class="activity-description">${log.description}</div>
                     </td>
                     <td>
                         ${log.old_values || log.new_values ? 
-                            `<button class="btn btn-sm btn-info" onclick="window.showActivityDetail('${log.id}', '${log.description}', '${JSON.stringify(log.old_values || {})}', '${JSON.stringify(log.new_values || {})}')">
+                            `<button class="activity-action-btn" onclick="window.showActivityDetail('${log.id}', '${log.description}', '${JSON.stringify(log.old_values || {})}', '${JSON.stringify(log.new_values || {})}')">
                                 <i class="fas fa-eye"></i>
                             </button>` : 
                             '<span class="text-muted">-</span>'
@@ -752,8 +732,12 @@ async function loadActivityLogs(page = 0) {
         } else {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="7" class="text-center text-muted">
-                        <i class="fas fa-info-circle"></i> Kayıt bulunamadı
+                    <td colspan="7" class="activity-empty-state">
+                        <div class="activity-empty-state-icon">
+                            <i class="fas fa-info-circle"></i>
+                        </div>
+                        <h6>Kayıt bulunamadı</h6>
+                        <p>Seçilen filtreler için herhangi bir aktivite kaydı bulunmuyor.</p>
                     </td>
                 </tr>
             `;
@@ -802,10 +786,10 @@ function formatDateTime(dateString) {
 
 function getRoleBadgeClass(role) {
     switch(role) {
-        case 'admin': return 'badge-danger';
-        case 'warehouse': return 'badge-primary';
-        case 'accounting': return 'badge-success';
-        default: return 'badge-secondary';
+        case 'admin': return 'activity-badge-danger';
+        case 'warehouse': return 'activity-badge-primary';
+        case 'accounting': return 'activity-badge-success';
+        default: return 'activity-badge-secondary';
     }
 }
 
@@ -820,11 +804,11 @@ function getRoleDisplayName(role) {
 
 function getActionBadgeClass(action) {
     switch(action) {
-        case 'CREATE': return 'badge-success';
-        case 'UPDATE': return 'badge-warning';
-        case 'DELETE': return 'badge-danger';
-        case 'LOGIN': return 'badge-info';
-        default: return 'badge-secondary';
+        case 'CREATE': return 'activity-badge-success';
+        case 'UPDATE': return 'activity-badge-warning';
+        case 'DELETE': return 'activity-badge-danger';
+        case 'LOGIN': return 'activity-badge-info';
+        default: return 'activity-badge-secondary';
     }
 }
 
