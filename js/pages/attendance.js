@@ -55,13 +55,12 @@ export async function loadAttendance() {
                             <th>Personel</th>
                             <th>Durum</th>
                             <th>Proje</th>
-                            <th>Günün Görevi</th>
                             <th>Ek Mesai</th>
                         </tr>
                     </thead>
                     <tbody id="attendanceTableBody">
                         <tr>
-                            <td colspan="5" class="text-center">Yükleniyor...</td>
+                            <td colspan="4" class="text-center">Yükleniyor...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -109,7 +108,6 @@ async function loadAttendanceData(date) {
             work_date: date,
             status: attendanceMap[emp.id]?.status || 'Tam Gün',
             project_id: attendanceMap[emp.id]?.project_id || null,
-            daily_task: attendanceMap[emp.id]?.daily_task || '',
             overtime_hours: attendanceMap[emp.id]?.overtime_hours || 0,
             record_id: attendanceMap[emp.id]?.id || null,
             isModified: false
@@ -140,14 +138,6 @@ async function loadAttendanceData(date) {
                             </option>
                         `).join('')}
                     </select>
-                </td>
-                <td>
-                    <input type="text" class="form-control daily-task" 
-                           data-index="${index}" 
-                           placeholder="Günün görevi..." 
-                           value="${record.daily_task || ''}"
-                           maxlength="510"
-                           style="min-width: 200px;">
                 </td>
                 <td>
                     <input type="number" class="form-control overtime-hours" 
@@ -206,14 +196,6 @@ function setupAttendanceListeners() {
         });
     });
     
-    // Daily task change listeners
-    document.querySelectorAll('.daily-task').forEach(input => {
-        input.addEventListener('change', (e) => {
-            const index = parseInt(e.target.dataset.index);
-            updateAttendanceRecord(index, 'daily_task', e.target.value || '');
-        });
-    });
-    
     // Overtime hours change listeners
     document.querySelectorAll('.overtime-hours').forEach(input => {
         input.addEventListener('change', (e) => {
@@ -260,7 +242,6 @@ window.saveAttendance = async function() {
                 work_date: record.work_date,
                 status: record.status,
                 project_id: record.project_id || null,
-                daily_task: record.daily_task || null,
                 overtime_hours: parseFloat(record.overtime_hours) || 0.00,
                 created_by: null // Always null for now since we don't have users in DB
             };

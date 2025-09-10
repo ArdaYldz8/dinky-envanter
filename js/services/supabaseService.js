@@ -220,7 +220,6 @@ export const attendanceService = {
                             status: record.status,
                             project_id: record.project_id || null,
                             overtime_hours: record.overtime_hours || 0,
-                            daily_task: record.daily_task || null,
                             created_by: record.created_by || null
                         })
                         .eq('id', record.id)
@@ -254,7 +253,6 @@ export const attendanceService = {
                             status: record.status,
                             project_id: record.project_id || null,
                             overtime_hours: record.overtime_hours || 0,
-                            daily_task: record.daily_task || null,
                             created_by: record.created_by || null
                         })
                         .eq('id', existing.id)
