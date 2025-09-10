@@ -1,5 +1,5 @@
 // Stock Management Page
-import { productService, inventoryService, employeeService, projectService, barcodeService } from '../services/supabaseService.js';
+import { productService, inventoryService, employeeService, projectService, barcodeService, supabase } from '../services/supabaseService.js';
 import { formatter } from '../utils/formatter.js';
 import { Toast } from '../utils/toast.js';
 import { Modal } from '../components/Modal.js';
@@ -48,11 +48,11 @@ export async function loadStock() {
                 <table class="table">
                     <thead>
                         <tr>
-                            <th>Stok Kodu</th>
-                            <th>Ürün</th>
-                            <th>Adet</th>
-                            <th>Ağırlık (Tanesi)</th>
-                            <th>Toplam Ağırlık</th>
+                            <th>Ürün Adı</th>
+                            <th>Birim</th>
+                            <th>Stok</th>
+                            <th>Ana Grup</th>
+                            <th>Alt Grup</th>
                             <th>Barkod</th>
                             <th>İşlemler</th>
                         </tr>
@@ -85,11 +85,11 @@ async function loadProducts() {
                 const totalWeight = (product.current_stock || 0) * unitWeight;
                 return `
                 <tr data-id="${product.id}">
-                    <td>${product.product_code || '-'}</td>
                     <td><strong>${product.product_name}</strong></td>
+                    <td>${product.unit}</td>
                     <td>${formatter.number(product.current_stock || 0, 0)}</td>
-                    <td>${formatter.number(unitWeight, 2)} kg</td>
-                    <td>${formatter.number(totalWeight, 2)} kg</td>
+                    <td><span class="badge badge-primary">${product.category || '-'}</span></td>
+                    <td><span class="badge badge-secondary">${product.subcategory || '-'}</span></td>
                     <td><span class="barcode-cell">-</span></td>
                     <td>
                         <button class="btn btn-sm btn-primary" onclick="window.openStockMovementModal('${product.id}')" title="Stok Hareketi">
@@ -181,6 +181,27 @@ window.openProductModal = function(productId = null) {
                     <input type="number" id="unitWeight" class="form-control" min="0" step="0.01" placeholder="0.00">
                 </div>
                 
+                <div class="form-group">
+                    <label>Ana Kategori</label>
+                    <select id="productCategory" class="form-control">
+                        <option value="">Kategori Seçiniz...</option>
+                        <option value="VİDA">VİDA</option>
+                        <option value="BOYA">BOYA</option>
+                        <option value="ELEKTROD">ELEKTROD</option>
+                        <option value="TAŞ">TAŞ</option>
+                        <option value="ELDİVEN">ELDİVEN</option>
+                        <option value="SİLİKON">SİLİKON</option>
+                        <option value="TİNER">TİNER</option>
+                        <option value="DİĞER">DİĞER</option>
+                        <option value="HIRDAVAT">HIRDAVAT</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Alt Kategori</label>
+                    <input type="text" id="productSubcategory" class="form-control" placeholder="Alt kategori (opsiyonel)">
+                </div>
+                
                 ${!isEdit ? `
                     <div class="form-group">
                         <label>Başlangıç Stok Miktarı</label>
@@ -224,6 +245,8 @@ async function loadProductData(productId) {
         // document.getElementById('productBarcode').value = product.barcode || '';
         document.getElementById('unit').value = product.unit;
         document.getElementById('unitWeight').value = product.unit_weight || '';
+        document.getElementById('productCategory').value = product.category || '';
+        document.getElementById('productSubcategory').value = product.subcategory || '';
     } catch (error) {
         Toast.error('Ürün bilgileri yüklenirken hata oluştu');
     }
@@ -237,7 +260,9 @@ async function saveProduct(productId, modal) {
             // barcode: document.getElementById('productBarcode').value || null,
             unit: document.getElementById('unit').value,
             unit_weight: parseFloat(document.getElementById('unitWeight').value) || 0,
-            min_stock_level: 0
+            min_stock_level: 0,
+            category: document.getElementById('productCategory').value || null,
+            subcategory: document.getElementById('productSubcategory').value || null
         };
 
         if (!productId) {
@@ -746,3 +771,364 @@ async function processBarcodeOperation(product) {
         Toast.error('İşlem kaydedilirken hata oluştu');
     }
 }
+
+// Tüm stok verilerini temizle - Düzeltilmiş versiyon
+window.clearAllStockData = async function() {
+    const confirmMessage = `TÜM STOK VERİLERİ SİLİNECEK!
+
+Bu işlem şunları silecek:
+• Tüm ürünler (products)
+• Tüm stok hareketleri (inventory_movements)  
+• Tüm stok seviyeleri (stock_levels)
+• Tüm barkod kayıtları
+
+BU İŞLEM GERİ ALINAMAZ!
+
+Devam etmek istediğinizden emin misiniz?`;
+
+    if (!confirm(confirmMessage)) {
+        return;
+    }
+    
+    // İkinci onay
+    if (!confirm('SON UYARI: Tüm stok verileri kalıcı olarak silinecek. Gerçekten devam etmek istiyor musunuz?')) {
+        return;
+    }
+    
+    try {
+        Toast.info('Stok verileri temizleniyor...');
+        console.log('=== STOK TEMİZLEME BAŞLADI ===');
+        
+        let totalDeleted = 0;
+
+        // 1. Önce stock_levels tablosunu temizle (foreign key bağlantıları için)
+        try {
+            console.log('1. Stock levels siliniyor...');
+            const { data: deletedStockLevels, error: stockLevelsError } = await supabase
+                .from('stock_levels')
+                .delete()
+                .neq('id', '00000000-0000-0000-0000-000000000000'); // Tümünü sil
+            
+            if (stockLevelsError) {
+                console.error('Stock levels silme hatası:', stockLevelsError);
+            } else {
+                console.log('Stock levels silindi');
+                totalDeleted += deletedStockLevels?.length || 0;
+            }
+        } catch (err) {
+            console.log('Stock levels tablosu bulunamadı veya hata:', err);
+        }
+
+        // 2. Inventory movements'i sil
+        try {
+            console.log('2. Inventory movements siliniyor...');
+            const { data: deletedMovements, error: movementsError } = await supabase
+                .from('inventory_movements')
+                .delete()
+                .neq('id', '00000000-0000-0000-0000-000000000000'); // Tümünü sil
+            
+            if (movementsError) {
+                console.error('Inventory movements silme hatası:', movementsError);
+            } else {
+                console.log('Inventory movements silindi');
+                totalDeleted += deletedMovements?.length || 0;
+            }
+        } catch (err) {
+            console.log('Inventory movements tablosu bulunamadı veya hata:', err);
+        }
+
+        // 3. Products tablosunu sil
+        try {
+            console.log('3. Products siliniyor...');
+            const { data: deletedProducts, error: productsError } = await supabase
+                .from('products')
+                .delete()
+                .neq('id', '00000000-0000-0000-0000-000000000000'); // Tümünü sil
+            
+            if (productsError) {
+                console.error('Products silme hatası:', productsError);
+            } else {
+                console.log('Products silindi');
+                totalDeleted += deletedProducts?.length || 0;
+            }
+        } catch (err) {
+            console.log('Products tablosu bulunamadı veya hata:', err);
+        }
+
+        // 4. Barcode verilerini sil (varsa)
+        try {
+            console.log('4. Barcode data siliniyor...');
+            const { data: deletedBarcodes, error: barcodeError } = await supabase
+                .from('barcodes')
+                .delete()
+                .neq('id', '00000000-0000-0000-0000-000000000000'); // Tümünü sil
+                
+            if (barcodeError) {
+                console.log('Barcode silme hatası (normal olabilir):', barcodeError);
+            } else {
+                console.log('Barcode data silindi');
+                totalDeleted += deletedBarcodes?.length || 0;
+            }
+        } catch (err) {
+            console.log('Barcode tablosu bulunamadı (normal):', err);
+        }
+
+        // 5. Categories tablosunu da temizle (varsa)
+        try {
+            console.log('5. Categories siliniyor...');
+            const { data: deletedCategories, error: categoriesError } = await supabase
+                .from('categories')
+                .delete()
+                .neq('id', '00000000-0000-0000-0000-000000000000'); // Tümünü sil
+                
+            if (categoriesError) {
+                console.log('Categories silme hatası (normal olabilir):', categoriesError);
+            } else {
+                console.log('Categories silindi');
+                totalDeleted += deletedCategories?.length || 0;
+            }
+        } catch (err) {
+            console.log('Categories tablosu bulunamadı (normal):', err);
+        }
+        
+        console.log('=== STOK TEMİZLEME TAMAMLANDI ===');
+        console.log(`Toplam silinen kayıt: ${totalDeleted}`);
+        
+        Toast.success(`Stok temizleme tamamlandı! Tüm stok verileri silindi.`);
+        
+        // Sayfa yenile
+        await loadStock();
+        
+    } catch (error) {
+        console.error('Stok temizleme hatası:', error);
+        Toast.error('Temizlik işlemi sırasında hata oluştu: ' + error.message);
+    }
+};
+
+// Hırdavat stok verilerini içe aktar
+window.importHirdavatStock = async function() {
+    const confirmMessage = `HIRDAVAT STOK VERİLERİ İÇE AKTARILACAK!
+
+Bu işlem PDF'den çıkartılan tüm ürünleri stok sistemine ekleyecek:
+• Yaklaşık 100+ ürün eklenecek
+• Mevcut stok adetleri ile birlikte
+• HRD- prefix ile ürün kodları
+• Ana ve alt kategori bilgileri
+
+Devam etmek istiyor musunuz?`;
+
+    if (!confirm(confirmMessage)) {
+        return;
+    }
+
+    try {
+        Toast.info('Hırdavat stokları içe aktarılıyor...');
+        console.log('=== HIRDAVAT STOK İÇE AKTARIMI BAŞLADI ===');
+        
+        // First check if category and subcategory columns exist
+        try {
+            const { data: columnCheck, error: columnError } = await supabase
+                .from('products')
+                .select('category, subcategory, barkod')
+                .limit(1);
+            
+            if (columnError && columnError.code === '42703') {
+                // Columns don't exist, create them
+                Toast.info('Veritabanı şeması güncelleniyor...');
+                console.log('Adding category and subcategory columns...');
+                
+                const { error: alterError } = await supabase.rpc('add_product_columns');
+                if (alterError) {
+                    console.error('Column addition error:', alterError);
+                    throw new Error('Veritabanı şeması güncellenirken hata oluştu: ' + alterError.message);
+                }
+            }
+        } catch (error) {
+            console.error('Column check error:', error);
+            // Continue anyway
+        }
+
+        // PDF'den çıkartılan ürün verisi - corrected stock values
+        const hirdavatProducts = [
+            { name: 'Civata', unit: 'ADET', stock: 149, category: 'VİDA', subcategory: 'VİDA' },
+            { name: 'Kaynak Kablo Soketi Dişi', unit: 'ADET', stock: 20, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: 'Elektrod Askaynak 2.5 Rotille', unit: 'ADET', stock: 12, category: 'ELEKTROD', subcategory: 'ELEKTROD' },
+            { name: 'Özen Gdc 501 Vs Y.v Gazaltı Kaynak', unit: 'ADET', stock: 2, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: 'Boya 15litre', unit: 'ADET', stock: 1, category: 'BOYA', subcategory: 'BOYA' },
+            { name: 'Sprey Boya Parlak Mavi', unit: 'ADET', stock: 1, category: 'BOYA', subcategory: 'BOYA' },
+            { name: 'Metre 5 Mt Soft Arj', unit: 'ADET', stock: 1, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: 'Su Terazisi Miknatisli Sari 50cm B.h.d', unit: 'ADET', stock: 1, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: 'Kademeli Matkap Uç Seti', unit: 'ADET', stock: 1, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: 'Astro Boya Tabancasi', unit: 'ADET', stock: 1, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: 'Eltos Zimba Keski Seti', unit: 'ADET', stock: 1, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: 'Yıldız Argün Saati', unit: 'ADET', stock: 1, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: 'Somun Sökme Makinesi', unit: 'ADET', stock: 1, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: 'Epoxy Tabanca Metal', unit: 'ADET', stock: 1, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: 'Kompresür Şarteli', unit: 'ADET', stock: 1, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: '11/2 Boru Anahtarı', unit: 'ADET', stock: 1, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: 'İzeltaç 5mm', unit: 'ADET', stock: 1, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: 'Vidalı İnvertörlü Hava Kompresörü 37 Kw', unit: 'ADET', stock: 1, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: 'Hava Kurutucusu', unit: 'ADET', stock: 1, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: '1000 Lt Hava Tankı', unit: 'ADET', stock: 1, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: 'Şerit Metre 10mt', unit: 'ADET', stock: 1, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: 'Haşçelik 4*4mm Ttr Kablo Beyaz', unit: 'ADET', stock: 1, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: 'Hubzug Cariskal 1,5ton*1,5mt', unit: 'ADET', stock: 1, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: 'Yeşil Boya 15 Lt', unit: 'ADET', stock: 1, category: 'BOYA', subcategory: 'BOYA' },
+            { name: 'Boya B.kirmizi 15lt', unit: 'ADET', stock: 1, category: 'BOYA', subcategory: 'BOYA' },
+            { name: 'Beyaz Boya 15 Lt', unit: 'ADET', stock: 1, category: 'BOYA', subcategory: 'BOYA' },
+            { name: 'Trapez Vida 5,5*32 Std', unit: 'KUTU', stock: 1, category: 'VİDA', subcategory: 'VİDA' },
+            { name: 'Plastik Saplı Tel Firça', unit: 'ADET', stock: 2, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: '10cm İnve Rullo', unit: 'ADET', stock: 2, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: 'Pul 27mm', unit: 'KG', stock: 2, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: 'Konza 3*25 3lü Grup Prizi Tk213', unit: 'ADET', stock: 2, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: 'Hava Diş Jak', unit: 'ADET', stock: 2, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: 'Sprey Boya Parlak Sarı', unit: 'ADET', stock: 2, category: 'BOYA', subcategory: 'BOYA' },
+            { name: 'Tij 20mm', unit: 'ADET', stock: 3, category: 'VİDA', subcategory: 'VİDA' },
+            { name: 'Boyaci 25cm Kalın Rolu', unit: 'ADET', stock: 3, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: 'Sprey Boya Parlak Trafik Sarı', unit: 'ADET', stock: 3, category: 'BOYA', subcategory: 'BOYA' },
+            { name: 'Gazaltı Meme 7,5mm', unit: 'ADET', stock: 3, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: 'Gazalti Dağitici Bakir Ucu', unit: 'ADET', stock: 3, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: 'Oksijen Kesme Lüle Takim', unit: 'ADET', stock: 3, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: '25 Cm Boya Rolosu', unit: 'ADET', stock: 3, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: '18mm Pul', unit: 'KG', stock: 3, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: 'İzole Bant', unit: 'ADET', stock: 3, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: 'Sprey Boya Parlak Gök Mavısı', unit: 'ADET', stock: 3, category: 'BOYA', subcategory: 'BOYA' },
+            { name: 'Keseci Taş 350 Lik', unit: 'ADET', stock: 3, category: 'TAŞ', subcategory: 'TAŞ' },
+            { name: 'Strenç', unit: 'ADET', stock: 4, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: 'Boyacı Endüstriyel Eldiven', unit: 'ADET', stock: 4, category: 'ELDİVEN', subcategory: 'ELDİVEN' },
+            { name: 'Eldiven Sarı (std 350 Beydi ) Sze 10x1', unit: 'ADET', stock: 4, category: 'ELDİVEN', subcategory: 'ELDİVEN' },
+            { name: 'Oksit Kirmızı', unit: 'ADET', stock: 4, category: 'BOYA', subcategory: 'BOYA' },
+            { name: '14mm Pul', unit: 'KG', stock: 5, category: 'DİĞER', subcategory: 'DİĞER' }
+        ];
+
+        // İkinci sayfa ürünleri
+        hirdavatProducts.push(
+            { name: 'Torj 501 Amp', unit: 'ADET', stock: 5, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: 'Gönye', unit: 'ADET', stock: 5, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: 'Hava Erkek Jak', unit: 'ADET', stock: 5, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: 'Oksijen Gazı', unit: 'ADET', stock: 5, category: 'BOYA', subcategory: 'BOYA' },
+            { name: 'Boya Antipas Kirmızı 15lt', unit: 'ADET', stock: 5, category: 'BOYA', subcategory: 'BOYA' },
+            { name: 'Gfb Maket Bıçağı Yedek', unit: 'ADET', stock: 6, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: 'Eldiven Siyah (demir Safety Dz,04)sze 10x1', unit: 'ADET', stock: 8, category: 'ELDİVEN', subcategory: 'ELDİVEN' },
+            { name: '75 Lik Şaçaklı Çanak Zimpara', unit: 'ADET', stock: 9, category: 'TAŞ', subcategory: 'TAŞ' },
+            { name: '10 Lük Kepepçe', unit: 'ADET', stock: 9, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: 'Boyalı Koruyucu Maske', unit: 'ADET', stock: 10, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: '65 Lik Şaçaklı Çanak Zimpara', unit: 'ADET', stock: 10, category: 'TAŞ', subcategory: 'TAŞ' },
+            { name: 'Epoxi Özel Parlak Antransit', unit: 'ADET', stock: 10, category: 'BOYA', subcategory: 'BOYA' },
+            { name: 'Epoxı Yüzey Dirrençil Sertleştirci', unit: 'ADET', stock: 10, category: 'BOYA', subcategory: 'BOYA' },
+            { name: 'Silikon Dayson', unit: 'ADET', stock: 10, category: 'SİLİKON', subcategory: 'SİLİKON' },
+            { name: 'Oksit Astra Kirmizi Boya 15 Lt', unit: 'ADET', stock: 11, category: 'BOYA', subcategory: 'BOYA' },
+            { name: '22mm Pul', unit: 'KG', stock: 12, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: 'Gazaltı Seramik Taş', unit: 'ADET', stock: 13, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: 'Ph1 X50mm Yıldız Ucu', unit: 'ADET', stock: 13, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: 'Koruyucu Gözlük Şeffaf', unit: 'ADET', stock: 15, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: 'Cv-180*8 Taşlama Taşi', unit: 'ADET', stock: 15, category: 'TAŞ', subcategory: 'TAŞ' },
+            { name: '115*6 Taşlama Taşi', unit: 'ADET', stock: 16, category: 'TAŞ', subcategory: 'TAŞ' },
+            { name: 'Sesil Mastik Antsak Grı 21', unit: 'ADET', stock: 17, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: 'Pullu Vida 5*5*25 Tm Diş', unit: 'ADET', stock: 17, category: 'VİDA', subcategory: 'VİDA' },
+            { name: 'Tij 24mm', unit: 'ADET', stock: 19, category: 'VİDA', subcategory: 'VİDA' },
+            { name: 'Çin-8*45mm Manyetık Somun Lokmasi', unit: 'ADET', stock: 20, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: 'Selsin Pu Mastik Siyah', unit: 'ADET', stock: 25, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: 'Üntel H01n2-d 1*35 Kaynak Kablosu Siyah', unit: 'ADET', stock: 25, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: '75mm Burgulu Çanak Firça', unit: 'ADET', stock: 27, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: '7016 Boya 15 Lt', unit: 'ADET', stock: 32, category: 'BOYA', subcategory: 'BOYA' },
+            { name: 'Gri Antipas Boya 15 Lt', unit: 'ADET', stock: 32, category: 'BOYA', subcategory: 'BOYA' },
+            { name: 'Kaynak Maskesi', unit: 'ADET', stock: 33, category: 'ELEKTROD', subcategory: 'ELEKTROD' },
+            { name: 'M8*1,2mm Kontak Meme', unit: 'ADET', stock: 35, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: 'Kaynak Pasta', unit: 'ADET', stock: 37, category: 'ELEKTROD', subcategory: 'ELEKTROD' },
+            { name: '20mm Pul', unit: 'KG', stock: 41, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: '24mm Somun', unit: 'ADET', stock: 45, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: '24*60mm Civata', unit: 'ADET', stock: 45, category: 'VİDA', subcategory: 'VİDA' },
+            { name: '18*40mm Civata', unit: 'ADET', stock: 45, category: 'VİDA', subcategory: 'VİDA' },
+            { name: 'Selulozik Tiner Mk Ms 15 Litre', unit: 'ADET', stock: 47, category: 'TİNER', subcategory: 'TİNER' },
+            { name: 'Selsin Pu Mastik Beyaz', unit: 'ADET', stock: 50, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: 'Ph-2 50mm Yıldız Tornavida Ucu', unit: 'ADET', stock: 54, category: 'VİDA', subcategory: 'VİDA' },
+            { name: 'Tel Gaztli 1,2mm', unit: 'ADET', stock: 55, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: 'Kaynak Korucu Cam', unit: 'ADET', stock: 57, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: 'Flap Disk Zimpara', unit: 'ADET', stock: 61, category: 'TAŞ', subcategory: 'TAŞ' },
+            { name: 'Soudal Silikon Şeffaf 280 Gr', unit: 'ADET', stock: 69, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: 'Hırdavat Malzeme', unit: 'ADET', stock: 76, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: '18*50 Civata', unit: 'ADET', stock: 80, category: 'VİDA', subcategory: 'VİDA' },
+            { name: 'Epoxy', unit: 'ADET', stock: 84, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: '3,2*350 Lazer B47 Bazik Elektrod', unit: 'ADET', stock: 86, category: 'ELEKTROD', subcategory: 'ELEKTROD' },
+            { name: 'Keseci Tas 180lik', unit: 'ADET', stock: 116, category: 'TAŞ', subcategory: 'TAŞ' },
+            { name: 'Elektrod Askaynak 3,8 Rotille', unit: 'ADET', stock: 120, category: 'ELEKTROD', subcategory: 'ELEKTROD' }
+        );
+
+        // Üçüncü sayfa ürünleri
+        hirdavatProducts.push(
+            { name: 'Eldiven Siyah (( Demir Safety Dz,04 )) Size : 10 Xl', unit: 'ADET', stock: 166, category: 'ELDİVEN', subcategory: 'ELDİVEN' },
+            { name: '16*50mm Civata', unit: 'ADET', stock: 180, category: 'VİDA', subcategory: 'VİDA' },
+            { name: 'Kesecı Taş 115lik', unit: 'ADET', stock: 192, category: 'TAŞ', subcategory: 'TAŞ' },
+            { name: '12*40 Somun', unit: 'ADET', stock: 200, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: '18mm Somun', unit: 'ADET', stock: 250, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: '20*50mm Civata', unit: 'ADET', stock: 275, category: 'VİDA', subcategory: 'VİDA' },
+            { name: 'Semeri Panel Beyaz', unit: 'ADET', stock: 550, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: '12*50mm Civata', unit: 'ADET', stock: 630, category: 'VİDA', subcategory: 'VİDA' },
+            { name: 'Somun 20mm', unit: 'ADET', stock: 766, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: '12mm Somun', unit: 'ADET', stock: 900, category: 'DİĞER', subcategory: 'DİĞER' },
+            { name: 'Keseci Taş 230lik', unit: 'ADET', stock: 2249, category: 'TAŞ', subcategory: 'TAŞ' }
+        );
+
+        let successCount = 0;
+        let errorCount = 0;
+
+        for (let i = 0; i < hirdavatProducts.length; i++) {
+            const product = hirdavatProducts[i];
+            try {
+                const currentDate = new Date();
+                const dateString = currentDate.toISOString().replace(/[-:\.]/g, '').substr(0, 14);
+                const barkodId = String(i + 1).padStart(3, '0');
+                
+                const productData = {
+                    product_name: product.name,
+                    product_code: `HRD-${String(i + 1).padStart(3, '0')}`, // HRD-001 formatında kod
+                    unit: product.unit,
+                    current_stock: Math.abs(product.stock), // Negatif stokları pozitif yap
+                    min_stock_level: 5, // Minimum stok seviyesi
+                    unit_weight: product.unit === 'KG' ? 1 : 0.1, // KG ise 1kg, diğerleri 100gr
+                    category: product.category || 'DİĞER',
+                    subcategory: product.subcategory || 'DİĞER',
+                    barkod: `HRD${dateString}${barkodId}`
+                };
+
+                const { data, error } = await productService.create(productData);
+                
+                if (error) {
+                    console.error(`Ürün ekleme hatası (${product.name}):`, error);
+                    errorCount++;
+                } else {
+                    console.log(`✓ Eklendi: ${product.name} (${product.stock} ${product.unit})`);
+                    successCount++;
+                }
+                
+                // Her 10 üründe bir kısa bekleme
+                if ((successCount + errorCount) % 10 === 0) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+                
+            } catch (err) {
+                console.error(`Ürün işleme hatası (${product.name}):`, err);
+                errorCount++;
+            }
+        }
+
+        console.log('=== HIRDAVAT STOK İÇE AKTARIMI TAMAMLANDI ===');
+        console.log(`Başarıyla eklenen: ${successCount}`);
+        console.log(`Hata olan: ${errorCount}`);
+        console.log(`Toplam işlenen: ${hirdavatProducts.length}`);
+
+        if (successCount > 0) {
+            Toast.success(`Hırdavat stok içe aktarımı tamamlandı! ${successCount} ürün başarıyla eklendi.`);
+        } else {
+            Toast.error('Hiçbir ürün eklenemedi. Hataları kontrol ediniz.');
+        }
+
+        // Sayfa yenile
+        await loadStock();
+        
+    } catch (error) {
+        console.error('Hırdavat stok içe aktarım hatası:', error);
+        Toast.error('İçe aktarım işlemi sırasında hata oluştu: ' + error.message);
+    }
+};
