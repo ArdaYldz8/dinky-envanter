@@ -52,14 +52,13 @@ export async function loadStock() {
                             <th>Birim</th>
                             <th>Stok</th>
                             <th>Ana Grup</th>
-                            <th>Alt Grup</th>
                             <th>Barkod</th>
                             <th>İşlemler</th>
                         </tr>
                     </thead>
                     <tbody id="stockTableBody">
                         <tr>
-                            <td colspan="7" class="text-center">Yükleniyor...</td>
+                            <td colspan="6" class="text-center">Yükleniyor...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -89,7 +88,6 @@ async function loadProducts() {
                     <td>${product.unit}</td>
                     <td>${formatter.number(product.current_stock || 0, 0)}</td>
                     <td><span class="badge badge-primary">${product.category || '-'}</span></td>
-                    <td><span class="badge badge-secondary">${product.subcategory || '-'}</span></td>
                     <td><span class="barcode-cell">-</span></td>
                     <td>
                         <button class="btn btn-sm btn-primary" onclick="window.openStockMovementModal('${product.id}')" title="Stok Hareketi">
@@ -113,7 +111,7 @@ async function loadProducts() {
                 </tr>
             `}).join('');
         } else {
-            tbody.innerHTML = '<tr><td colspan="7" class="text-center">Ürün bulunamadı.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center">Ürün bulunamadı.</td></tr>';
         }
     } catch (error) {
         console.error('Ürünler yüklenirken hata:', error);
@@ -316,7 +314,6 @@ window.viewProductMovements = async function(productId) {
                                         <th>Tarih</th>
                                         <th>Tip</th>
                                         <th>Miktar</th>
-                                        <th>Personel</th>
                                         <th>Proje</th>
                                         <th>Açıklama</th>
                                     </tr>
@@ -332,11 +329,10 @@ window.viewProductMovements = async function(productId) {
                                                     </span>
                                                 </td>
                                                 <td>${formatter.stock(mov.quantity)} ${product.unit}</td>
-                                                <td>${mov.employees?.full_name || '-'}</td>
                                                 <td>${mov.projects?.project_name || '-'}</td>
                                                 <td>${mov.description || '-'}</td>
                                             </tr>
-                                        `).join('') : '<tr><td colspan="6">Hareket kaydı yok</td></tr>'
+                                        `).join('') : '<tr><td colspan="5">Hareket kaydı yok</td></tr>'
                                     }
                                 </tbody>
                             </table>
@@ -406,7 +402,7 @@ window.openStockMovementModal = async function(productId) {
                                 <label>İşlemi Yapan</label>
                                 <input type="text" id="movementPerformedBy" class="form-control" 
                                        value="${getCurrentUserName()}" readonly style="background: #f8f9fa;">
-                                <input type="hidden" id="movementEmployeeId" value="${getCurrentUserId()}">
+                                <small class="text-muted">İşlem kaydında otomatik olarak kaydedilecek</small>
                             </div>
                             
                             <div class="form-group col-md-6" id="movementProjectGroup" style="display:none;">

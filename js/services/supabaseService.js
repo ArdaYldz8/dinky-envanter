@@ -832,7 +832,13 @@ export const inventoryService = {
     async getByProduct(productId) {
         const { data, error } = await supabase
             .from('inventory_movements')
-            .select('id, type, quantity, movement_date, description, created_at')
+            .select(`
+                id, type, quantity, movement_date, description, created_at,
+                employee_id,
+                project_id,
+                employees (full_name),
+                projects (project_name)
+            `)
             .eq('product_id', productId)
             .order('movement_date', { ascending: false });
         return { data, error };
