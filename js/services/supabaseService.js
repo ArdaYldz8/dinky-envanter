@@ -834,9 +834,7 @@ export const inventoryService = {
             .from('inventory_movements')
             .select(`
                 id, type, quantity, movement_date, description, created_at,
-                employee_id,
                 project_id,
-                employees (full_name),
                 projects (project_name)
             `)
             .eq('product_id', productId)
