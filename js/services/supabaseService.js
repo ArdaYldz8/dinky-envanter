@@ -38,24 +38,112 @@ export const employeeService = {
             .insert([employee])
             .select('*')
             .single();
+            
+        // Activity logging
+        if (!error && data) {
+            try {
+                const userInfo = this.getCurrentUserInfo();
+                await supabase.rpc('log_user_activity', {
+                    p_action_type: 'CREATE',
+                    p_table_name: 'employees',
+                    p_record_id: data.id,
+                    p_description: `Yeni personel eklendi: ${data.full_name}`,
+                    p_new_values: data,
+                    p_user_id: userInfo.id,
+                    p_user_name: userInfo.name,
+                    p_user_role: userInfo.role
+                });
+            } catch (logError) {
+                console.warn('Employee create activity logging failed:', logError);
+            }
+        }
+        
         return { data, error };
+    },
+    
+    getCurrentUserInfo() {
+        const userStr = localStorage.getItem('dinky_user');
+        if (!userStr) {
+            return { id: null, name: 'Sistem', role: 'system' };
+        }
+        const user = JSON.parse(userStr);
+        return {
+            id: user.id,
+            name: user.name || user.full_name || user.email || 'Kullanıcı',
+            role: user.role || 'user'
+        };
     },
 
     async update(id, updates) {
+        // Get old data first
+        const { data: oldData } = await supabase
+            .from('employees')
+            .select('*')
+            .eq('id', id)
+            .single();
+            
         const { data, error } = await supabase
             .from('employees')
             .update(updates)
             .eq('id', id)
             .select('*')
             .single();
+            
+        // Activity logging
+        if (!error && data) {
+            try {
+                const userInfo = this.getCurrentUserInfo();
+                await supabase.rpc('log_user_activity', {
+                    p_action_type: 'UPDATE',
+                    p_table_name: 'employees',
+                    p_record_id: data.id,
+                    p_description: `Personel güncellendi: ${data.full_name}`,
+                    p_old_values: oldData,
+                    p_new_values: data,
+                    p_user_id: userInfo.id,
+                    p_user_name: userInfo.name,
+                    p_user_role: userInfo.role
+                });
+            } catch (logError) {
+                console.warn('Employee update activity logging failed:', logError);
+            }
+        }
+        
         return { data, error };
     },
 
     async delete(id) {
+        // Get data before deletion
+        const { data: oldData } = await supabase
+            .from('employees')
+            .select('*')
+            .eq('id', id)
+            .single();
+            
         const { error } = await supabase
             .from('employees')
             .delete()
             .eq('id', id);
+            
+        // Activity logging
+        if (!error && oldData) {
+            try {
+                const userInfo = this.getCurrentUserInfo();
+                await supabase.rpc('log_user_activity', {
+                    p_action_type: 'DELETE',
+                    p_table_name: 'employees',
+                    p_record_id: oldData.id,
+                    p_description: `Personel silindi: ${oldData.full_name}`,
+                    p_old_values: oldData,
+                    p_user_id: userInfo.id,
+                    p_user_name: userInfo.name,
+                    p_user_role: userInfo.role
+                });
+            } catch (logError) {
+                console.warn('Employee delete activity logging failed:', logError);
+            }
+        }
+        
         return { error };
     }
 };
@@ -85,23 +173,111 @@ export const projectService = {
             .insert([project])
             .select('*')
             .single();
+            
+        // Activity logging
+        if (!error && data) {
+            try {
+                const userInfo = this.getCurrentUserInfo();
+                await supabase.rpc('log_user_activity', {
+                    p_action_type: 'CREATE',
+                    p_table_name: 'projects',
+                    p_record_id: data.id,
+                    p_description: `Yeni proje eklendi: ${data.project_name}`,
+                    p_new_values: data,
+                    p_user_id: userInfo.id,
+                    p_user_name: userInfo.name,
+                    p_user_role: userInfo.role
+                });
+            } catch (logError) {
+                console.warn('Project create activity logging failed:', logError);
+            }
+        }
+        
         return { data, error };
+    },
+    
+    getCurrentUserInfo() {
+        const userStr = localStorage.getItem('dinky_user');
+        if (!userStr) {
+            return { id: null, name: 'Sistem', role: 'system' };
+        }
+        const user = JSON.parse(userStr);
+        return {
+            id: user.id,
+            name: user.name || user.full_name || user.email || 'Kullanıcı',
+            role: user.role || 'user'
+        };
     },
 
     async update(id, updates) {
+        // Get old data first
+        const { data: oldData } = await supabase
+            .from('projects')
+            .select('*')
+            .eq('id', id)
+            .single();
+            
         const { data, error } = await supabase
             .from('projects')
             .update(updates)
             .eq('id', id)
             .select('*')
             .single();
+            
+        // Activity logging
+        if (!error && data) {
+            try {
+                const userInfo = this.getCurrentUserInfo();
+                await supabase.rpc('log_user_activity', {
+                    p_action_type: 'UPDATE',
+                    p_table_name: 'projects',
+                    p_record_id: data.id,
+                    p_description: `Proje güncellendi: ${data.project_name}`,
+                    p_old_values: oldData,
+                    p_new_values: data,
+                    p_user_id: userInfo.id,
+                    p_user_name: userInfo.name,
+                    p_user_role: userInfo.role
+                });
+            } catch (logError) {
+                console.warn('Project update activity logging failed:', logError);
+            }
+        }
+        
         return { data, error };
     },
     async delete(id) {
+        // Get data before deletion
+        const { data: oldData } = await supabase
+            .from('projects')
+            .select('*')
+            .eq('id', id)
+            .single();
+            
         const { error } = await supabase
             .from('projects')
             .delete()
             .eq('id', id);
+            
+        // Activity logging
+        if (!error && oldData) {
+            try {
+                const userInfo = this.getCurrentUserInfo();
+                await supabase.rpc('log_user_activity', {
+                    p_action_type: 'DELETE',
+                    p_table_name: 'projects',
+                    p_record_id: oldData.id,
+                    p_description: `Proje silindi: ${oldData.project_name}`,
+                    p_old_values: oldData,
+                    p_user_id: userInfo.id,
+                    p_user_name: userInfo.name,
+                    p_user_role: userInfo.role
+                });
+            } catch (logError) {
+                console.warn('Project delete activity logging failed:', logError);
+            }
+        }
+        
         return { error };
     }
 };
@@ -192,16 +368,89 @@ export const attendanceService = {
             .insert([record])
             .select('*')
             .single();
+            
+        // Activity logging
+        if (!error && data) {
+            try {
+                const userInfo = this.getCurrentUserInfo();
+                const { data: employee } = await supabase
+                    .from('employees')
+                    .select('full_name')
+                    .eq('id', data.employee_id)
+                    .single();
+                    
+                await supabase.rpc('log_user_activity', {
+                    p_action_type: 'CREATE',
+                    p_table_name: 'attendance_records',
+                    p_record_id: data.id,
+                    p_description: `Yeni puantaj kaydı: ${employee?.full_name || 'Bilinmeyen'} - ${data.work_date}`,
+                    p_new_values: data,
+                    p_user_id: userInfo.id,
+                    p_user_name: userInfo.name,
+                    p_user_role: userInfo.role
+                });
+            } catch (logError) {
+                console.warn('Attendance create activity logging failed:', logError);
+            }
+        }
+        
         return { data, error };
+    },
+    
+    getCurrentUserInfo() {
+        const userStr = localStorage.getItem('dinky_user');
+        if (!userStr) {
+            return { id: null, name: 'Sistem', role: 'system' };
+        }
+        const user = JSON.parse(userStr);
+        return {
+            id: user.id,
+            name: user.name || user.full_name || user.email || 'Kullanıcı',
+            role: user.role || 'user'
+        };
     },
 
     async update(id, updates) {
+        // Get old data first
+        const { data: oldData } = await supabase
+            .from('attendance_records')
+            .select('*')
+            .eq('id', id)
+            .single();
+            
         const { data, error } = await supabase
             .from('attendance_records')
             .update(updates)
             .eq('id', id)
             .select('*')
             .single();
+            
+        // Activity logging
+        if (!error && data) {
+            try {
+                const userInfo = this.getCurrentUserInfo();
+                const { data: employee } = await supabase
+                    .from('employees')
+                    .select('full_name')
+                    .eq('id', data.employee_id)
+                    .single();
+                    
+                await supabase.rpc('log_user_activity', {
+                    p_action_type: 'UPDATE',
+                    p_table_name: 'attendance_records',
+                    p_record_id: data.id,
+                    p_description: `Puantaj güncellendi: ${employee?.full_name || 'Bilinmeyen'} - ${data.work_date}`,
+                    p_old_values: oldData,
+                    p_new_values: data,
+                    p_user_id: userInfo.id,
+                    p_user_name: userInfo.name,
+                    p_user_role: userInfo.role
+                });
+            } catch (logError) {
+                console.warn('Attendance update activity logging failed:', logError);
+            }
+        }
+        
         return { data, error };
     },
 
@@ -230,6 +479,28 @@ export const attendanceService = {
                         errors.push(error);
                     } else if (data && data.length > 0) {
                         results.push(...data);
+                        // Activity logging for update
+                        try {
+                            const userInfo = this.getCurrentUserInfo();
+                            const { data: employee } = await supabase
+                                .from('employees')
+                                .select('full_name')
+                                .eq('id', data[0].employee_id)
+                                .single();
+                                
+                            await supabase.rpc('log_user_activity', {
+                                p_action_type: 'UPDATE',
+                                p_table_name: 'attendance_records',
+                                p_record_id: data[0].id,
+                                p_description: `Puantaj güncellendi: ${employee?.full_name || 'Bilinmeyen'} - ${data[0].work_date}`,
+                                p_new_values: data[0],
+                                p_user_id: userInfo.id,
+                                p_user_name: userInfo.name,
+                                p_user_role: userInfo.role
+                            });
+                        } catch (logError) {
+                            console.warn('Attendance upsert update activity logging failed:', logError);
+                        }
                     }
                 } catch (err) {
                     console.error('Update exception:', err);
@@ -263,6 +534,28 @@ export const attendanceService = {
                         errors.push(error);
                     } else if (data && data.length > 0) {
                         results.push(...data);
+                        // Activity logging for update existing
+                        try {
+                            const userInfo = this.getCurrentUserInfo();
+                            const { data: employee } = await supabase
+                                .from('employees')
+                                .select('full_name')
+                                .eq('id', data[0].employee_id)
+                                .single();
+                                
+                            await supabase.rpc('log_user_activity', {
+                                p_action_type: 'UPDATE',
+                                p_table_name: 'attendance_records',
+                                p_record_id: data[0].id,
+                                p_description: `Puantaj güncellendi: ${employee?.full_name || 'Bilinmeyen'} - ${data[0].work_date}`,
+                                p_new_values: data[0],
+                                p_user_id: userInfo.id,
+                                p_user_name: userInfo.name,
+                                p_user_role: userInfo.role
+                            });
+                        } catch (logError) {
+                            console.warn('Attendance existing update activity logging failed:', logError);
+                        }
                     }
                 } else {
                     // Insert new (clean record without id field)
@@ -272,7 +565,6 @@ export const attendanceService = {
                         status: record.status,
                         project_id: record.project_id || null,
                         overtime_hours: record.overtime_hours || 0,
-                        daily_task: record.daily_task || null,
                         created_by: record.created_by || null
                     };
                     
@@ -286,6 +578,28 @@ export const attendanceService = {
                         errors.push(error);
                     } else if (data && data.length > 0) {
                         results.push(...data);
+                        // Activity logging for insert new
+                        try {
+                            const userInfo = this.getCurrentUserInfo();
+                            const { data: employee } = await supabase
+                                .from('employees')
+                                .select('full_name')
+                                .eq('id', data[0].employee_id)
+                                .single();
+                                
+                            await supabase.rpc('log_user_activity', {
+                                p_action_type: 'CREATE',
+                                p_table_name: 'attendance_records',
+                                p_record_id: data[0].id,
+                                p_description: `Yeni puantaj kaydı: ${employee?.full_name || 'Bilinmeyen'} - ${data[0].work_date}`,
+                                p_new_values: data[0],
+                                p_user_id: userInfo.id,
+                                p_user_name: userInfo.name,
+                                p_user_role: userInfo.role
+                            });
+                        } catch (logError) {
+                            console.warn('Attendance insert activity logging failed:', logError);
+                        }
                     }
                 }
             }
@@ -338,7 +652,46 @@ export const transactionService = {
             .insert([transaction])
             .select('*')
             .single();
+            
+        // Activity logging
+        if (!error && data) {
+            try {
+                const userInfo = this.getCurrentUserInfo();
+                const { data: employee } = await supabase
+                    .from('employees')
+                    .select('full_name')
+                    .eq('id', data.employee_id)
+                    .single();
+                    
+                await supabase.rpc('log_user_activity', {
+                    p_action_type: 'CREATE',
+                    p_table_name: 'transactions',
+                    p_record_id: data.id,
+                    p_description: `Yeni ${data.type.toLowerCase()} kaydı: ${employee?.full_name || 'Bilinmeyen'} - ${data.amount} TL`,
+                    p_new_values: data,
+                    p_user_id: userInfo.id,
+                    p_user_name: userInfo.name,
+                    p_user_role: userInfo.role
+                });
+            } catch (logError) {
+                console.warn('Transaction create activity logging failed:', logError);
+            }
+        }
+        
         return { data, error };
+    },
+    
+    getCurrentUserInfo() {
+        const userStr = localStorage.getItem('dinky_user');
+        if (!userStr) {
+            return { id: null, name: 'Sistem', role: 'system' };
+        }
+        const user = JSON.parse(userStr);
+        return {
+            id: user.id,
+            name: user.name || user.full_name || user.email || 'Kullanıcı',
+            role: user.role || 'user'
+        };
     },
 
     async update(id, updates) {
@@ -410,7 +763,40 @@ export const productService = {
             .insert([product])
             .select('*')
             .single();
+            
+        // Activity logging
+        if (!error && data) {
+            try {
+                const userInfo = this.getCurrentUserInfo();
+                await supabase.rpc('log_user_activity', {
+                    p_action_type: 'CREATE',
+                    p_table_name: 'products',
+                    p_record_id: data.id,
+                    p_description: `Yeni ürün tanımı: ${data.product_name}`,
+                    p_new_values: data,
+                    p_user_id: userInfo.id,
+                    p_user_name: userInfo.name,
+                    p_user_role: userInfo.role
+                });
+            } catch (logError) {
+                console.warn('Product create activity logging failed:', logError);
+            }
+        }
+        
         return { data, error };
+    },
+    
+    getCurrentUserInfo() {
+        const userStr = localStorage.getItem('dinky_user');
+        if (!userStr) {
+            return { id: null, name: 'Sistem', role: 'system' };
+        }
+        const user = JSON.parse(userStr);
+        return {
+            id: user.id,
+            name: user.name || user.full_name || user.email || 'Kullanıcı',
+            role: user.role || 'user'
+        };
     },
 
     async update(id, updates) {
@@ -465,6 +851,23 @@ export const inventoryService = {
     },
 
     async create(movement) {
+        // Get current user info from localStorage
+        const getCurrentUserInfo = () => {
+            const userStr = localStorage.getItem('dinky_user');
+            if (!userStr) {
+                return { id: null, name: 'Sistem', role: 'system' };
+            }
+            const user = JSON.parse(userStr);
+            // Debug logs removed
+            return {
+                id: user.id,
+                name: user.name || user.full_name || user.email || 'Kullanıcı',
+                role: user.role || 'user'
+            };
+        };
+        
+        const userInfo = getCurrentUserInfo();
+        
         // Clean movement object to ensure no undefined values
         const cleanMovement = {
             product_id: movement.product_id,
@@ -474,16 +877,46 @@ export const inventoryService = {
             employee_id: movement.employee_id || null,
             project_id: movement.project_id || null,
             description: movement.description || null,
-            created_by: movement.created_by || null
+            created_by: userInfo.id
         };
         
-        // Insert without select to avoid 400 error
-        const { error } = await supabase
+        // Insert movement
+        const { data, error } = await supabase
             .from('inventory_movements')
-            .insert(cleanMovement);
+            .insert(cleanMovement)
+            .select('*')
+            .single();
             
-        // Return success without data if no error
-        const data = error ? null : { ...cleanMovement, id: 'temp-' + Date.now() };
+        if (!error && data) {
+            // Manuel activity log kaydı yap
+            try {
+                const productResult = await supabase
+                    .from('products')
+                    .select('product_name')
+                    .eq('id', movement.product_id)
+                    .single();
+                
+                const productName = productResult.data?.product_name || 'Bilinmeyen';
+                const description = `Stok hareketi: ${productName} - ${movement.type} (${movement.quantity})`;
+                
+                const actionType = movement.type === 'Giriş' ? 'STOCK_IN' : 'STOCK_OUT';
+                
+                await supabase.rpc('log_user_activity', {
+                    p_action_type: actionType,
+                    p_table_name: 'inventory_movements',
+                    p_record_id: data.id,
+                    p_description: description,
+                    p_new_values: cleanMovement,
+                    p_user_id: userInfo.id,
+                    p_user_name: userInfo.name,
+                    p_user_role: userInfo.role
+                });
+            } catch (logError) {
+                console.warn('Activity logging failed:', logError);
+            }
+        }
+        
+        // Return result
         return { data, error };
     },
 

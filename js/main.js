@@ -119,19 +119,7 @@ async function logActivity(actionType, tableName, recordId, oldValues, newValues
 // Logout function with activity logging
 window.logout = async function() {
     if (confirm('Çıkmak istediğinizden emin misiniz?')) {
-        try {
-            // Log logout activity
-            await logActivity(
-                'LOGOUT',
-                null,
-                null,
-                null,
-                null,
-                `${currentUser.name} sistemden çıkış yaptı`
-            );
-        } catch (error) {
-            console.error('Logout activity logging failed:', error);
-        }
+        // Logout activity logging removed - not needed
         
         localStorage.removeItem('dinky_user');
         window.location.href = 'login.html';

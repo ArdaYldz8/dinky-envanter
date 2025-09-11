@@ -170,7 +170,8 @@ export async function loadSettings() {
                                         <option value="CREATE">Ekleme</option>
                                         <option value="UPDATE">Güncelleme</option>
                                         <option value="DELETE">Silme</option>
-                                        <option value="LOGIN">Giriş</option>
+                                        <option value="STOCK_IN">Stok Girişi</option>
+                                        <option value="STOCK_OUT">Stok Çıkışı</option>
                                     </select>
                                 </div>
                                 <div class="filter-group">
@@ -179,18 +180,20 @@ export async function loadSettings() {
                                         <option value="">Tümü</option>
                                         <option value="products">Ürünler</option>
                                         <option value="employees">Personel</option>
-                                        <option value="attendance">Puantaj</option>
+                                        <option value="attendance_records">Puantaj</option>
                                         <option value="inventory_movements">Stok Hareketleri</option>
+                                        <option value="projects">Projeler</option>
+                                        <option value="tasks">Görevler</option>
+                                        <option value="transactions">İşlemler</option>
                                     </select>
                                 </div>
                                 <div class="filter-group">
-                                    <label>Tarih Aralığı</label>
-                                    <select class="filter-control" id="filterDateRange">
-                                        <option value="1">Son 1 gün</option>
-                                        <option value="7" selected>Son 7 gün</option>
-                                        <option value="30">Son 30 gün</option>
-                                        <option value="90">Son 90 gün</option>
-                                    </select>
+                                    <label>Başlangıç Tarihi</label>
+                                    <input type="date" class="filter-control" id="filterStartDate" value="${new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}">
+                                </div>
+                                <div class="filter-group">
+                                    <label>Bitiş Tarihi</label>
+                                    <input type="date" class="filter-control" id="filterEndDate" value="${new Date().toISOString().split('T')[0]}">
                                 </div>
                             </div>
                             <div class="filter-actions">
@@ -641,10 +644,15 @@ async function loadActivitySummary() {
     if (!isAdmin()) return;
     
     try {
-        const daysBack = parseInt(document.getElementById('filterDateRange')?.value || '7');
+        const startDate = document.getElementById('filterStartDate')?.value;
+        const endDate = document.getElementById('filterEndDate')?.value;
+        
+        if (!startDate || !endDate) return;
+        
+        const daysDiff = Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24)) + 1;
         
         const { data, error } = await supabase.rpc('get_activity_summary', {
-            days_back: daysBack
+            days_back: daysDiff
         });
         
         if (error) throw error;
@@ -673,10 +681,16 @@ async function loadActivityLogs(page = 0) {
         const filterUserRole = document.getElementById('filterUserRole')?.value || null;
         const filterActionType = document.getElementById('filterActionType')?.value || null;
         const filterTableName = document.getElementById('filterTableName')?.value || null;
-        const daysBack = parseInt(document.getElementById('filterDateRange')?.value || '7');
+        const startDateStr = document.getElementById('filterStartDate')?.value;
+        const endDateStr = document.getElementById('filterEndDate')?.value;
         
-        const startDate = new Date();
-        startDate.setDate(startDate.getDate() - daysBack);
+        if (!startDateStr || !endDateStr) {
+            Toast.error('Lütfen başlangıç ve bitiş tarihi seçin');
+            return;
+        }
+        
+        const startDate = new Date(startDateStr + 'T00:00:00');
+        const endDate = new Date(endDateStr + 'T23:59:59');
         
         const { data, error } = await supabase.rpc('get_activity_logs', {
             limit_count: activityPageSize,
@@ -684,7 +698,8 @@ async function loadActivityLogs(page = 0) {
             filter_user_role: filterUserRole,
             filter_action_type: filterActionType,
             filter_table_name: filterTableName,
-            start_date: startDate.toISOString()
+            start_date: startDate.toISOString(),
+            end_date: endDate.toISOString()
         });
         
         if (error) throw error;
@@ -807,6 +822,8 @@ function getActionBadgeClass(action) {
         case 'CREATE': return 'activity-badge-success';
         case 'UPDATE': return 'activity-badge-warning';
         case 'DELETE': return 'activity-badge-danger';
+        case 'STOCK_IN': return 'activity-badge-success';
+        case 'STOCK_OUT': return 'activity-badge-warning';
         case 'LOGIN': return 'activity-badge-info';
         default: return 'activity-badge-secondary';
     }
@@ -817,6 +834,8 @@ function getActionDisplayName(action) {
         case 'CREATE': return 'Ekleme';
         case 'UPDATE': return 'Güncelleme';
         case 'DELETE': return 'Silme';
+        case 'STOCK_IN': return 'Stok Girişi';
+        case 'STOCK_OUT': return 'Stok Çıkışı';
         case 'LOGIN': return 'Giriş';
         case 'LOGOUT': return 'Çıkış';
         default: return action || 'Bilinmiyor';
@@ -828,8 +847,12 @@ function getTableDisplayName(table) {
         case 'products': return 'Ürünler';
         case 'employees': return 'Personel';
         case 'attendance': return 'Puantaj';
+        case 'attendance_records': return 'Puantaj Kayıtları';
         case 'inventory_movements': return 'Stok Hareketleri';
         case 'projects': return 'Projeler';
+        case 'tasks': return 'Görevler';
+        case 'transactions': return 'İşlemler';
+        case 'task_personnel': return 'Görev Personeli';
         default: return table || '-';
     }
 }
@@ -849,10 +872,14 @@ window.loadActivityLogsPage = function(direction) {
 };
 
 window.resetActivityFilters = function() {
+    const today = new Date().toISOString().split('T')[0];
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    
     document.getElementById('filterUserRole').value = '';
     document.getElementById('filterActionType').value = '';
     document.getElementById('filterTableName').value = '';
-    document.getElementById('filterDateRange').value = '7';
+    document.getElementById('filterStartDate').value = weekAgo;
+    document.getElementById('filterEndDate').value = today;
     loadActivityLogs(0);
     loadActivitySummary();
 };
@@ -893,10 +920,16 @@ window.exportActivityLogs = async function() {
         const filterUserRole = document.getElementById('filterUserRole')?.value || null;
         const filterActionType = document.getElementById('filterActionType')?.value || null;
         const filterTableName = document.getElementById('filterTableName')?.value || null;
-        const daysBack = parseInt(document.getElementById('filterDateRange')?.value || '7');
+        const startDateStr = document.getElementById('filterStartDate')?.value;
+        const endDateStr = document.getElementById('filterEndDate')?.value;
         
-        const startDate = new Date();
-        startDate.setDate(startDate.getDate() - daysBack);
+        if (!startDateStr || !endDateStr) {
+            Toast.error('Lütfen başlangıç ve bitiş tarihi seçin');
+            return;
+        }
+        
+        const startDate = new Date(startDateStr + 'T00:00:00');
+        const endDate = new Date(endDateStr + 'T23:59:59');
         
         const { data, error } = await supabase.rpc('get_activity_logs', {
             limit_count: 1000, // Excel için maksimum kayıt
@@ -904,7 +937,8 @@ window.exportActivityLogs = async function() {
             filter_user_role: filterUserRole,
             filter_action_type: filterActionType,
             filter_table_name: filterTableName,
-            start_date: startDate.toISOString()
+            start_date: startDate.toISOString(),
+            end_date: endDate.toISOString()
         });
         
         if (error) throw error;

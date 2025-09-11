@@ -509,7 +509,7 @@ async function processStockMovement(product, modal) {
             project_id: projectId,
             description: description,
             movement_date: new Date().toISOString().split('T')[0],
-            created_by: null // Set to null to avoid UUID format error
+            // created_by will be set automatically by inventory service
         });
         
         if (error) {

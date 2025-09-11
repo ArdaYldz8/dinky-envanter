@@ -207,22 +207,7 @@
                     
                     localStorage.setItem('dinky_user', JSON.stringify(userData));
                     
-                    // Log login activity
-                    try {
-                        await supabase.rpc('log_activity', {
-                            p_user_id: userData.id,
-                            p_user_name: userData.name,
-                            p_user_role: userData.role,
-                            p_action_type: 'LOGIN',
-                            p_table_name: null,
-                            p_record_id: null,
-                            p_old_values: null,
-                            p_new_values: { login_time: userData.loginTime, email: userData.email },
-                            p_description: `${userData.name} sisteme giriş yaptı`
-                        });
-                    } catch (logError) {
-                        console.error('Login activity logging failed:', logError);
-                    }
+                    // Login activity logging removed - not needed
                     
                     // Redirect to main app
                     window.location.href = 'index.html';
