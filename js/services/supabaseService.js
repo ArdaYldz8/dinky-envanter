@@ -9,7 +9,7 @@ export const employeeService = {
     async getAll() {
         const { data, error } = await supabase
             .from('employees')
-            .select('*')
+            .select()
             .order('full_name');
         return { data, error };
     },
@@ -17,7 +17,7 @@ export const employeeService = {
     async getActive() {
         const { data, error } = await supabase
             .from('employees')
-            .select('*')
+            .select()
             .eq('is_active', true)
             .order('full_name');
         return { data, error };
@@ -26,7 +26,7 @@ export const employeeService = {
     async getById(id) {
         const { data, error } = await supabase
             .from('employees')
-            .select('*')
+            .select()
             .eq('id', id)
             .single();
         return { data, error };
@@ -36,7 +36,7 @@ export const employeeService = {
         const { data, error } = await supabase
             .from('employees')
             .insert([employee])
-            .select('*')
+            .select()
             .single();
             
         // Activity logging
@@ -78,7 +78,7 @@ export const employeeService = {
         // Get old data first
         const { data: oldData } = await supabase
             .from('employees')
-            .select('*')
+            .select()
             .eq('id', id)
             .single();
             
@@ -86,7 +86,7 @@ export const employeeService = {
             .from('employees')
             .update(updates)
             .eq('id', id)
-            .select('*')
+            .select()
             .single();
             
         // Activity logging
@@ -116,7 +116,7 @@ export const employeeService = {
         // Get data before deletion
         const { data: oldData } = await supabase
             .from('employees')
-            .select('*')
+            .select()
             .eq('id', id)
             .single();
             
@@ -153,7 +153,7 @@ export const projectService = {
     async getAll() {
         const { data, error } = await supabase
             .from('projects')
-            .select('*')
+            .select()
             .order('created_at', { ascending: false });
         return { data, error };
     },
@@ -161,7 +161,7 @@ export const projectService = {
     async getActive() {
         const { data, error } = await supabase
             .from('projects')
-            .select('*')
+            .select()
             .eq('status', 'Aktif')
             .order('project_name');
         return { data, error };
@@ -171,7 +171,7 @@ export const projectService = {
         const { data, error } = await supabase
             .from('projects')
             .insert([project])
-            .select('*')
+            .select()
             .single();
             
         // Activity logging
@@ -213,7 +213,7 @@ export const projectService = {
         // Get old data first
         const { data: oldData } = await supabase
             .from('projects')
-            .select('*')
+            .select()
             .eq('id', id)
             .single();
             
@@ -221,7 +221,7 @@ export const projectService = {
             .from('projects')
             .update(updates)
             .eq('id', id)
-            .select('*')
+            .select()
             .single();
             
         // Activity logging
@@ -250,7 +250,7 @@ export const projectService = {
         // Get data before deletion
         const { data: oldData } = await supabase
             .from('projects')
-            .select('*')
+            .select()
             .eq('id', id)
             .single();
             
@@ -366,7 +366,7 @@ export const attendanceService = {
         const { data, error } = await supabase
             .from('attendance_records')
             .insert([record])
-            .select('*')
+            .select()
             .single();
             
         // Activity logging
@@ -414,7 +414,7 @@ export const attendanceService = {
         // Get old data first
         const { data: oldData } = await supabase
             .from('attendance_records')
-            .select('*')
+            .select()
             .eq('id', id)
             .single();
             
@@ -422,7 +422,7 @@ export const attendanceService = {
             .from('attendance_records')
             .update(updates)
             .eq('id', id)
-            .select('*')
+            .select()
             .single();
             
         // Activity logging
@@ -468,11 +468,10 @@ export const attendanceService = {
                         .update({
                             status: record.status,
                             project_id: record.project_id || null,
-                            overtime_hours: record.overtime_hours || 0,
-                            created_by: record.created_by || null
+                            overtime_hours: record.overtime_hours || 0
                         })
                         .eq('id', record.id)
-                        .select('*');
+                        .select();
                         
                     if (error) {
                         console.error('Update error for ID:', record.id, error);
@@ -523,11 +522,10 @@ export const attendanceService = {
                         .update({
                             status: record.status,
                             project_id: record.project_id || null,
-                            overtime_hours: record.overtime_hours || 0,
-                            created_by: record.created_by || null
+                            overtime_hours: record.overtime_hours || 0
                         })
                         .eq('id', existing.id)
-                        .select('*');
+                        .select();
                         
                     if (error) {
                         console.error('Update existing error:', error);
@@ -564,14 +562,13 @@ export const attendanceService = {
                         work_date: record.work_date,
                         status: record.status,
                         project_id: record.project_id || null,
-                        overtime_hours: record.overtime_hours || 0,
-                        created_by: record.created_by || null
+                        overtime_hours: record.overtime_hours || 0
                     };
                     
                     const { data, error } = await supabase
                         .from('attendance_records')
                         .insert([newRecord])
-                        .select('*');
+                        .select();
                         
                     if (error) {
                         console.error('Insert error:', error);
@@ -636,7 +633,7 @@ export const transactionService = {
     async getByEmployee(employeeId, startDate, endDate) {
         let query = supabase
             .from('transactions')
-            .select('*')
+            .select()
             .eq('employee_id', employeeId);
         
         if (startDate) query = query.gte('transaction_date', startDate);
@@ -650,7 +647,7 @@ export const transactionService = {
         const { data, error } = await supabase
             .from('transactions')
             .insert([transaction])
-            .select('*')
+            .select()
             .single();
             
         // Activity logging
@@ -699,7 +696,7 @@ export const transactionService = {
             .from('transactions')
             .update(updates)
             .eq('id', id)
-            .select('*')
+            .select()
             .single();
         return { data, error };
     },
@@ -718,7 +715,7 @@ export const productService = {
     async getAll() {
         const { data, error } = await supabase
             .from('products')
-            .select('*')
+            .select()
             .order('product_name');
         return { data, error };
     },
@@ -732,7 +729,7 @@ export const productService = {
             // Fallback: Get all products and filter in JavaScript
             const { data: products, error: fallbackError } = await supabase
                 .from('products')
-                .select('*')
+                .select()
                 .order('product_name');
                 
             if (fallbackError) return { data: null, error: fallbackError };
@@ -751,7 +748,7 @@ export const productService = {
     async getById(id) {
         const { data, error } = await supabase
             .from('products')
-            .select('*')
+            .select()
             .eq('id', id)
             .single();
         return { data, error };
@@ -761,7 +758,7 @@ export const productService = {
         const { data, error } = await supabase
             .from('products')
             .insert([product])
-            .select('*')
+            .select()
             .single();
             
         // Activity logging
@@ -804,7 +801,7 @@ export const productService = {
             .from('products')
             .update(updates)
             .eq('id', id)
-            .select('*')
+            .select()
             .single();
         return { data, error };
     },
@@ -880,15 +877,14 @@ export const inventoryService = {
             movement_date: movement.movement_date,
             employee_id: movement.employee_id || null,
             project_id: movement.project_id || null,
-            description: movement.description || null,
-            created_by: userInfo.id
+            description: movement.description || null
         };
         
         // Insert movement
         const { data, error } = await supabase
             .from('inventory_movements')
             .insert(cleanMovement)
-            .select('*')
+            .select()
             .single();
             
         if (!error && data) {
@@ -1022,7 +1018,7 @@ export const barcodeService = {
             .from('products')
             .update({ barcode })
             .eq('id', productId)
-            .select('*')
+            .select()
             .single();
         return { data, error };
     },
@@ -1229,7 +1225,7 @@ export const taskPersonnelService = {
         try {
             const { data, error } = await supabase
                 .from('task_personnel')
-                .select('*')
+                .select()
                 .order('name');
             
             if (error) throw error;
@@ -1246,7 +1242,7 @@ export const taskPersonnelService = {
             
             const { data, error } = await supabase
                 .from('task_personnel')
-                .select('*')
+                .select()
                 .eq('is_active', true)
                 .order('name');
             

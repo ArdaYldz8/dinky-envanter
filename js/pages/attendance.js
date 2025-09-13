@@ -237,20 +237,26 @@ window.saveAttendance = async function() {
         
         modifiedRecords.forEach(index => {
             const record = currentAttendanceData[index];
+
+            // Validation
+            if (!record.employee_id || !record.work_date || !record.status) {
+                console.error('Invalid record data:', record);
+                return;
+            }
+
             const recordData = {
                 employee_id: record.employee_id,
                 work_date: record.work_date,
                 status: record.status,
                 project_id: record.project_id || null,
-                overtime_hours: parseFloat(record.overtime_hours) || 0.00,
-                created_by: null // Always null for now since we don't have users in DB
+                overtime_hours: parseFloat(record.overtime_hours) || 0.00
             };
-            
+
             // Only include ID if it exists (for updates)
             if (record.record_id && record.record_id !== 'new') {
                 recordData.id = record.record_id;
             }
-            
+
             recordsToSave.push(recordData);
         });
 
