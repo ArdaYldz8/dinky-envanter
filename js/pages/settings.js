@@ -1,5 +1,5 @@
 // Settings Page
-import { projectService, productService, supabase } from '../services/supabaseService.js';
+import { projectService, supabase } from '../services/supabaseService.js';
 import { formatter } from '../utils/formatter.js';
 import { Toast } from '../utils/toast.js';
 import { Modal } from '../components/Modal.js';
@@ -28,9 +28,6 @@ export async function loadSettings() {
                 <ul class="tab-nav">
                     <li class="tab-item active" data-tab="projects">
                         <i class="fas fa-project-diagram"></i> Projeler
-                    </li>
-                    <li class="tab-item" data-tab="products">
-                        <i class="fas fa-box"></i> Ürünler
                     </li>
                     ${isAdmin() ? `
                     <li class="tab-item" data-tab="activity">
@@ -61,34 +58,6 @@ export async function loadSettings() {
                                 <tbody id="projectsTableBody">
                                     <tr>
                                         <td colspan="4" class="text-center">Yükleniyor...</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                    
-                    <div class="tab-pane" id="productsTab">
-                        <div class="section-header">
-                            <h2>Ürün Tanımları</h2>
-                            <button class="btn btn-primary" onclick="window.openProductSettingsModal()">
-                                <i class="fas fa-plus"></i> Yeni Ürün
-                            </button>
-                        </div>
-                        
-                        <div class="table-responsive">
-                            <table class="table">
-                                <thead>
-                                    <tr>
-                                        <th>Ürün Kodu</th>
-                                        <th>Ürün Adı</th>
-                                        <th>Birim</th>
-                                        <th>Min. Stok</th>
-                                        <th>İşlemler</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="productsTableBody">
-                                    <tr>
-                                        <td colspan="5" class="text-center">Yükleniyor...</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -170,8 +139,8 @@ export async function loadSettings() {
                                         <option value="CREATE">Ekleme</option>
                                         <option value="UPDATE">Güncelleme</option>
                                         <option value="DELETE">Silme</option>
-                                        <option value="STOCK_IN">Stok Girişi</option>
-                                        <option value="STOCK_OUT">Stok Çıkışı</option>
+                                        <option value="STOCK_IN">Satın Alım</option>
+                                        <option value="STOCK_OUT">Satış</option>
                                     </select>
                                 </div>
                                 <div class="filter-group">
@@ -262,7 +231,6 @@ export async function loadSettings() {
 
     setupTabs();
     await loadProjects();
-    await loadProductsSettings();
     
     // Load activity monitoring if admin
     if (isAdmin()) {
@@ -276,16 +244,25 @@ function setupTabs() {
     const tabPanes = document.querySelectorAll('.tab-pane');
     
     tabItems.forEach(item => {
-        item.addEventListener('click', () => {
+        item.addEventListener('click', async () => {
+            const tabId = item.dataset.tab;
+
+            // Special security check for activity monitoring
+            if (tabId === 'activity' && isAdmin()) {
+                const hasAccess = await verifyActivityAccess();
+                if (!hasAccess) {
+                    return; // Access denied, don't switch tabs
+                }
+            }
+
             // Remove active class from all
             tabItems.forEach(t => t.classList.remove('active'));
             tabPanes.forEach(p => p.classList.remove('active'));
-            
+
             // Add active class to clicked
             item.classList.add('active');
-            const tabId = item.dataset.tab;
             document.getElementById(`${tabId}Tab`).classList.add('active');
-            
+
             // Load activity data when activity tab is activated
             if (tabId === 'activity' && isAdmin()) {
                 loadActivitySummary();
@@ -336,39 +313,6 @@ async function loadProjects() {
     }
 }
 
-async function loadProductsSettings() {
-    try {
-        const { data: products, error } = await productService.getAll();
-        
-        if (error) throw error;
-        
-        const tbody = document.getElementById('productsTableBody');
-        
-        if (products && products.length > 0) {
-            tbody.innerHTML = products.map(product => `
-                <tr data-id="${product.id}">
-                    <td>${product.product_code || '-'}</td>
-                    <td><strong>${product.product_name}</strong></td>
-                    <td>${product.unit}</td>
-                    <td>${formatter.number(product.min_stock_level, 2)}</td>
-                    <td>
-                        <button class="btn btn-sm btn-warning" onclick="window.editProductSettings('${product.id}')">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="btn btn-sm btn-danger" onclick="window.deleteProduct('${product.id}')">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </td>
-                </tr>
-            `).join('');
-        } else {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center">Ürün bulunamadı.</td></tr>';
-        }
-    } catch (error) {
-        console.error('Ürünler yüklenirken hata:', error);
-        Toast.error('Ürün listesi yüklenirken hata oluştu');
-    }
-}
 
 // Project Modal
 window.openProjectModal = function(projectId = null) {
@@ -456,119 +400,10 @@ async function saveProject(projectId, modal) {
     }
 }
 
-// Product Settings Modal
-window.openProductSettingsModal = function(productId = null) {
-    const isEdit = !!productId;
-    const modal = new Modal({
-        title: isEdit ? 'Ürün Düzenle' : 'Yeni Ürün Ekle',
-        content: `
-            <form id="productSettingsForm">
-                <div class="form-group">
-                    <label>Ürün Adı <span class="required">*</span></label>
-                    <input type="text" id="productName" class="form-control" required>
-                </div>
-                
-                <div class="form-group">
-                    <label>Ürün Kodu</label>
-                    <input type="text" id="productCode" class="form-control">
-                </div>
-                
-                <div class="form-group">
-                    <label>Birim <span class="required">*</span></label>
-                    <select id="productUnit" class="form-control" required>
-                        <option value="Adet">Adet</option>
-                        <option value="Kg">Kg</option>
-                        <option value="Metre">Metre</option>
-                        <option value="M2">M2</option>
-                        <option value="M3">M3</option>
-                        <option value="Litre">Litre</option>
-                        <option value="Paket">Paket</option>
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <label>Minimum Stok Seviyesi</label>
-                    <input type="number" id="minStock" class="form-control" min="0" step="0.01" value="0">
-                </div>
-                
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" onclick="this.closest('.modal').querySelector('.modal-close').click()">
-                        İptal
-                    </button>
-                    <button type="submit" class="btn btn-primary">
-                        ${isEdit ? 'Güncelle' : 'Kaydet'}
-                    </button>
-                </div>
-            </form>
-        `,
-        size: 'medium'
-    });
-
-    modal.show();
-
-    const form = document.getElementById('productSettingsForm');
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        await saveProductSettings(productId, modal);
-    });
-
-    if (isEdit) {
-        loadProductSettingsData(productId);
-    }
-};
-
-async function loadProductSettingsData(productId) {
-    try {
-        const { data: product, error } = await productService.getById(productId);
-        if (error) throw error;
-        
-        document.getElementById('productName').value = product.product_name;
-        document.getElementById('productCode').value = product.product_code || '';
-        document.getElementById('productUnit').value = product.unit;
-        document.getElementById('minStock').value = product.min_stock_level;
-    } catch (error) {
-        Toast.error('Ürün bilgileri yüklenirken hata oluştu');
-    }
-}
-
-async function saveProductSettings(productId, modal) {
-    try {
-        const productData = {
-            product_name: document.getElementById('productName').value,
-            product_code: document.getElementById('productCode').value || null,
-            unit: document.getElementById('productUnit').value,
-            min_stock_level: parseFloat(document.getElementById('minStock').value) || 0
-        };
-
-        if (!productId) {
-            productData.current_stock = 0;
-        }
-
-        let result;
-        if (productId) {
-            result = await productService.update(productId, productData);
-        } else {
-            result = await productService.create(productData);
-        }
-
-        if (result.error) throw result.error;
-
-        Toast.success(productId ? 'Ürün güncellendi' : 'Ürün eklendi');
-        modal.close();
-        await loadProductsSettings();
-    } catch (error) {
-        console.error('Ürün kaydedilirken hata:', error);
-        Toast.error('Ürün kaydedilirken bir hata oluştu');
-    }
-}
 
 // Edit functions
 window.editProject = function(projectId) {
     window.openProjectModal(projectId);
-};
-
-window.editProductSettings = function(productId) {
-    window.openProductSettingsModal(productId);
 };
 
 // Toggle project status
@@ -612,25 +447,6 @@ window.deleteProject = async function(projectId) {
     }
 };
 
-// Delete product
-window.deleteProduct = async function(productId) {
-    const confirmed = await Modal.confirm(
-        'Bu ürünü silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.',
-        'Ürün Sil'
-    );
-
-    if (confirmed) {
-        try {
-            const { error } = await productService.delete(productId);
-            if (error) throw error;
-            
-            Toast.success('Ürün silindi');
-            await loadProductsSettings();
-        } catch (error) {
-            Toast.error('Ürün silinirken hata oluştu. Ürün kullanımda olabilir.');
-        }
-    }
-};
 
 // ================================
 // ACTIVITY MONITORING FUNCTIONS
@@ -834,8 +650,8 @@ function getActionDisplayName(action) {
         case 'CREATE': return 'Ekleme';
         case 'UPDATE': return 'Güncelleme';
         case 'DELETE': return 'Silme';
-        case 'STOCK_IN': return 'Stok Girişi';
-        case 'STOCK_OUT': return 'Stok Çıkışı';
+        case 'STOCK_IN': return 'Satın Alım';
+        case 'STOCK_OUT': return 'Satış';
         case 'LOGIN': return 'Giriş';
         case 'LOGOUT': return 'Çıkış';
         default: return action || 'Bilinmiyor';
@@ -974,9 +790,148 @@ window.exportActivityLogs = async function() {
         document.body.removeChild(link);
         
         Toast.success('Excel dosyası indirildi');
-        
+
     } catch (error) {
         console.error('Excel export hatası:', error);
         Toast.error('Excel dosyası hazırlanırken hata oluştu');
     }
 };
+
+// ================================
+// ACTIVITY MONITORING SECURITY
+// ================================
+
+// Security password verification for activity monitoring access
+async function verifyActivityAccess() {
+    return new Promise((resolve) => {
+        const modal = new Modal({
+            title: '🔒 Aktivite İzleme - Güvenlik Doğrulaması',
+            content: `
+                <div class="security-verification">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-shield-alt"></i>
+                        <strong>Güvenlik Uyarısı:</strong> Aktivite izleme hassas veriler içerir.
+                        Erişim için ek güvenlik doğrulaması gereklidir.
+                    </div>
+                    <form id="securityForm">
+                        <div class="form-group">
+                            <label for="securityPassword">
+                                <i class="fas fa-key"></i> Güvenlik Şifresi
+                            </label>
+                            <input type="password"
+                                   id="securityPassword"
+                                   class="form-control"
+                                   placeholder="Aktivite izleme şifresini girin"
+                                   required
+                                   autocomplete="off">
+                            <small class="text-muted">
+                                Bu şifre sistem yöneticisi tarafından belirlenmiştir.
+                            </small>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" onclick="this.closest('.modal').querySelector('.modal-close').click()">
+                                <i class="fas fa-times"></i> İptal
+                            </button>
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-unlock"></i> Doğrula ve Erişim Ver
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <style>
+                .security-verification {
+                    padding: 10px 0;
+                }
+                .security-verification .alert {
+                    margin-bottom: 20px;
+                    padding: 15px;
+                    border-radius: 8px;
+                    border-left: 4px solid #ff9800;
+                }
+                .security-verification .form-group label {
+                    font-weight: 600;
+                    color: #333;
+                    margin-bottom: 8px;
+                }
+                .security-verification .form-control {
+                    border: 2px solid #e9ecef;
+                    border-radius: 6px;
+                    padding: 10px 12px;
+                    font-size: 14px;
+                }
+                .security-verification .form-control:focus {
+                    border-color: #dc3545;
+                    box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.15);
+                    outline: none;
+                }
+                .security-verification .modal-footer {
+                    margin-top: 20px;
+                    padding-top: 15px;
+                    border-top: 1px solid #dee2e6;
+                    display: flex;
+                    justify-content: flex-end;
+                    gap: 10px;
+                }
+                </style>
+            `,
+            size: 'medium',
+            onShow: () => {
+                // Focus on password input
+                setTimeout(() => {
+                    document.getElementById('securityPassword').focus();
+                }, 100);
+            }
+        });
+
+        modal.show();
+
+        // Handle form submission
+        document.getElementById('securityForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const password = document.getElementById('securityPassword').value;
+
+            // Security password - you can change this to your desired password
+            const ACTIVITY_SECURITY_PASSWORD = 'admin123'; // Change this password
+
+            if (password === ACTIVITY_SECURITY_PASSWORD) {
+                modal.close();
+                Toast.success('🔓 Aktivite izleme erişimi onaylandı');
+                resolve(true);
+            } else {
+                // Shake animation for wrong password
+                const passwordInput = document.getElementById('securityPassword');
+                passwordInput.style.border = '2px solid #dc3545';
+                passwordInput.style.animation = 'shake 0.5s ease-in-out';
+
+                setTimeout(() => {
+                    passwordInput.style.animation = '';
+                    passwordInput.style.border = '2px solid #e9ecef';
+                }, 500);
+
+                passwordInput.value = '';
+                passwordInput.focus();
+                Toast.error('❌ Geçersiz güvenlik şifresi!');
+            }
+        });
+
+        // Handle modal close without verification
+        modal.onClose = () => {
+            resolve(false);
+        };
+
+        // Add shake animation CSS
+        if (!document.getElementById('shake-animation')) {
+            const style = document.createElement('style');
+            style.id = 'shake-animation';
+            style.textContent = `
+                @keyframes shake {
+                    0%, 100% { transform: translateX(0); }
+                    25% { transform: translateX(-5px); }
+                    75% { transform: translateX(5px); }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+    });
+}

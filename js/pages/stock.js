@@ -28,11 +28,14 @@ export async function loadStock() {
     content.innerHTML = `
         <div class="page-header">
             <h1><i class="fas fa-boxes"></i> Stok Yönetimi</h1>
-            <p>Ürün tanımları, stok durumu görüntüleme ve stok giriş/çıkış işlemleri.</p>
+            <p>Ürün tanımları, stok durumu görüntüleme ve satın alım/satış işlemleri.</p>
             <div class="page-actions">
                 <a href="#barcode" class="btn btn-primary nav-link">
                     <i class="fas fa-barcode"></i> Barkod İşlemleri
                 </a>
+                <button class="btn btn-success" onclick="window.openExcelUploadModal()">
+                    <i class="fas fa-file-excel"></i> Excel ile Yükle
+                </button>
                 <button class="btn btn-secondary" onclick="window.openProductModal()">
                     <i class="fas fa-plus"></i> Yeni Ürün
                 </button>
@@ -49,16 +52,18 @@ export async function loadStock() {
                     <thead>
                         <tr>
                             <th>Ürün Adı</th>
+                            <th>Ürün Kodu</th>
                             <th>Birim</th>
                             <th>Stok</th>
                             <th>Ana Grup</th>
+                            <th>Alt Kategori</th>
                             <th>Barkod</th>
                             <th>İşlemler</th>
                         </tr>
                     </thead>
                     <tbody id="stockTableBody">
                         <tr>
-                            <td colspan="6" class="text-center">Yükleniyor...</td>
+                            <td colspan="8" class="text-center">Yükleniyor...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -85,16 +90,18 @@ async function loadProducts() {
                 return `
                 <tr data-id="${product.id}">
                     <td><strong>${product.product_name}</strong></td>
+                    <td><span class="text-muted">${product.product_code || '-'}</span></td>
                     <td>${product.unit}</td>
                     <td>${formatter.number(product.current_stock || 0, 0)}</td>
                     <td><span class="badge badge-primary">${product.category || '-'}</span></td>
-                    <td><span class="barcode-cell">-</span></td>
+                    <td><span class="badge badge-secondary">${product.subcategory || '-'}</span></td>
+                    <td><span class="barcode-cell text-muted">-</span></td>
                     <td>
                         <button class="btn btn-sm btn-primary" onclick="window.openStockMovementModal('${product.id}')" title="Stok Hareketi">
                             <i class="fas fa-exchange-alt"></i>
                         </button>
                         <!-- Barcode button disabled until database column is added
-                        ${false ? 
+                        ${false ?
                             `<button class="btn btn-sm btn-success" onclick="window.openBarcodeModal('${product.id}')" title="Barkod İşlemi">
                                 <i class="fas fa-barcode"></i>
                             </button>` :
@@ -111,7 +118,7 @@ async function loadProducts() {
                 </tr>
             `}).join('');
         } else {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center">Ürün bulunamadı.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center">Ürün bulunamadı.</td></tr>';
         }
     } catch (error) {
         console.error('Ürünler yüklenirken hata:', error);
@@ -285,13 +292,14 @@ async function saveProduct(productId, modal) {
     }
 }
 
-// View Product Movements
+// View Product Movements with Simple Column Filtering
 window.viewProductMovements = async function(productId) {
     try {
         const { data: product, error: prodError } = await productService.getById(productId);
         if (prodError) throw prodError;
 
-        const { data: movements, error: movError } = await inventoryService.getByProduct(productId);
+        // Get all movements for this product
+        const { data: allMovements, error: movError } = await inventoryService.getByProduct(productId);
         if (movError) throw movError;
 
         const modal = new Modal({
@@ -304,38 +312,52 @@ window.viewProductMovements = async function(productId) {
                         <p><strong>Birim:</strong> ${product.unit}</p>
                         <p><strong>Mevcut Stok:</strong> ${formatter.stock(product.current_stock)} ${product.unit}</p>
                     </div>
-                    
+
                     <div class="detail-section">
-                        <h4>Son Hareketler</h4>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h4>Hareketler <span id="movementCount" class="badge badge-info"></span></h4>
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle"></i> Filtrelemek için kolon başlıklarına tıklayın
+                            </small>
+                        </div>
                         <div class="table-responsive">
-                            <table class="table table-sm">
+                            <table class="table table-sm table-hover">
                                 <thead>
                                     <tr>
-                                        <th>Tarih</th>
-                                        <th>Tip</th>
+                                        <th class="filterable-header" data-column="date">
+                                            <span class="header-content">
+                                                <span class="header-text">Tarih</span>
+                                                <i class="fas fa-sort header-icon"></i>
+                                            </span>
+                                        </th>
+                                        <th class="filterable-header" data-column="type">
+                                            <span class="header-content">
+                                                <span class="header-text">Tip</span>
+                                                <i class="fas fa-filter header-icon"></i>
+                                            </span>
+                                        </th>
                                         <th>Miktar</th>
-                                        <th>Proje</th>
+                                        <th class="filterable-header" data-column="project">
+                                            <span class="header-content">
+                                                <span class="header-text">Proje</span>
+                                                <i class="fas fa-filter header-icon"></i>
+                                            </span>
+                                        </th>
                                         <th>Açıklama</th>
                                     </tr>
                                 </thead>
-                                <tbody>
-                                    ${movements && movements.length > 0 ?
-                                        movements.map(mov => `
-                                            <tr>
-                                                <td>${formatter.date(mov.movement_date)}</td>
-                                                <td>
-                                                    <span class="badge ${mov.type === 'Giriş' ? 'badge-success' : 'badge-warning'}">
-                                                        ${mov.type}
-                                                    </span>
-                                                </td>
-                                                <td>${formatter.stock(mov.quantity)} ${product.unit}</td>
-                                                <td>${mov.projects?.project_name || '-'}</td>
-                                                <td>${mov.description || '-'}</td>
-                                            </tr>
-                                        `).join('') : '<tr><td colspan="5">Hareket kaydı yok</td></tr>'
-                                    }
+                                <tbody id="movementsTableBody">
+                                    <!-- Dynamic content will be loaded here -->
                                 </tbody>
                             </table>
+                        </div>
+
+                        <div id="activeFilters" class="mt-2" style="display: none;">
+                            <small class="text-muted">Aktif filtreler: </small>
+                            <div id="filterBadges" class="d-inline"></div>
+                            <button id="clearAllFilters" class="btn btn-sm btn-outline-secondary ml-2">
+                                <i class="fas fa-times"></i> Tümünü Temizle
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -344,15 +366,1354 @@ window.viewProductMovements = async function(productId) {
         });
 
         modal.show();
+
+        // Setup simple column filtering
+        setupSimpleColumnFiltering(allMovements, product);
+
     } catch (error) {
         console.error('Hareket geçmişi yüklenirken hata:', error);
         Toast.error('Hareket geçmişi yüklenirken hata oluştu');
     }
 };
 
+// Modern table filtering with proper event delegation
+function setupSimpleColumnFiltering(allMovements, product) {
+    // Wait for modal content to be fully rendered
+    setTimeout(() => {
+        const tableBody = document.getElementById('movementsTableBody');
+        const countBadge = document.getElementById('movementCount');
+        const activeFiltersDiv = document.getElementById('activeFilters');
+        const filterBadgesDiv = document.getElementById('filterBadges');
+        const clearAllBtn = document.getElementById('clearAllFilters');
+
+        if (!tableBody || !countBadge) {
+            console.error('Table elements not found');
+            return;
+        }
+
+        let activeFilters = {};
+        let sortOrder = null;
+        let currentFilterMenu = null;
+
+        // Render movements in table
+        function renderMovements(movements) {
+            if (movements && movements.length > 0) {
+                tableBody.innerHTML = movements.map(mov => `
+                    <tr>
+                        <td>${formatter.date(mov.movement_date)}</td>
+                        <td>
+                            <span class="badge ${mov.type === 'Giriş' ? 'badge-success' : 'badge-warning'}">
+                                ${mov.type}
+                            </span>
+                        </td>
+                        <td>${formatter.stock(mov.quantity)} ${product.unit}</td>
+                        <td>${mov.projects?.project_name || '-'}</td>
+                        <td>${mov.description || '-'}</td>
+                    </tr>
+                `).join('');
+            } else {
+                tableBody.innerHTML = '<tr><td colspan="5" class="text-center">Bu filtreye uygun hareket bulunamadı</td></tr>';
+            }
+            countBadge.textContent = movements ? movements.length : 0;
+        }
+
+        // Update filter badges display
+        function updateFilterBadges() {
+            const filterCount = Object.keys(activeFilters).length;
+
+            if (filterCount > 0) {
+                activeFiltersDiv.style.display = 'block';
+                filterBadgesDiv.innerHTML = Object.entries(activeFilters).map(([key, value]) => {
+                    const filterName = key === 'type' ? 'Tip' : key === 'project' ? 'Proje' : key;
+                    return `<span class="badge badge-primary mr-1" data-filter-badge="${key}">
+                        ${filterName}: ${value}
+                        <i class="fas fa-times ml-1" style="cursor: pointer;"></i>
+                    </span>`;
+                }).join('');
+            } else {
+                activeFiltersDiv.style.display = 'none';
+            }
+        }
+
+        // Apply filters and sorting
+        function applyFilters() {
+            let filteredMovements = [...allMovements];
+
+            if (activeFilters.type) {
+                filteredMovements = filteredMovements.filter(mov => mov.type === activeFilters.type);
+            }
+
+            if (activeFilters.project) {
+                filteredMovements = filteredMovements.filter(mov =>
+                    (mov.projects?.project_name || '-') === activeFilters.project
+                );
+            }
+
+            if (sortOrder) {
+                filteredMovements.sort((a, b) => {
+                    const dateA = new Date(a.movement_date);
+                    const dateB = new Date(b.movement_date);
+                    return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
+                });
+            }
+
+            renderMovements(filteredMovements);
+            updateFilterBadges();
+        }
+
+        // Close any open menu
+        function closeMenu() {
+            if (currentFilterMenu) {
+                currentFilterMenu.remove();
+                currentFilterMenu = null;
+            }
+        }
+
+        // Create and show filter menu
+        function showFilterMenu(column, event) {
+            // Prevent event bubbling to avoid immediate closure
+            event.stopPropagation();
+            event.preventDefault();
+
+            closeMenu();
+
+            const menu = document.createElement('div');
+            menu.className = 'dropdown-menu show';
+            menu.style.cssText = `
+                position: fixed;
+                left: ${event.clientX}px;
+                top: ${event.clientY}px;
+                z-index: 10000;
+                min-width: 180px;
+                max-width: 250px;
+                background: #ffffff;
+                border: 1px solid #e1e5e9;
+                border-radius: 8px;
+                box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15), 0 2px 8px rgba(0, 0, 0, 0.1);
+                display: block !important;
+                opacity: 1;
+                visibility: visible;
+                transform: none;
+                padding: 8px 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                font-size: 14px;
+                line-height: 1.4;
+                animation: fadeIn 0.15s ease-out;
+            `;
+
+            // Add CSS animation keyframes if not already added
+            if (!document.getElementById('filter-menu-styles')) {
+                const style = document.createElement('style');
+                style.id = 'filter-menu-styles';
+                style.textContent = `
+                    @keyframes fadeIn {
+                        from { opacity: 0; transform: translateY(-4px); }
+                        to { opacity: 1; transform: translateY(0); }
+                    }
+
+                    .filter-dropdown-menu .dropdown-item {
+                        padding: 8px 16px;
+                        margin: 0 4px;
+                        border-radius: 4px;
+                        transition: all 0.15s ease;
+                        color: #374151;
+                        font-weight: 500;
+                        border: none;
+                        background: none;
+                        width: calc(100% - 8px);
+                        text-align: left;
+                        cursor: pointer;
+                        display: flex;
+                        align-items: center;
+                        gap: 8px;
+                    }
+
+                    .filter-dropdown-menu .dropdown-item:hover {
+                        background: #f3f4f6;
+                        color: #111827;
+                        transform: translateX(2px);
+                    }
+
+                    .filter-dropdown-menu .dropdown-item.active {
+                        background: #3b82f6;
+                        color: white;
+                        font-weight: 600;
+                    }
+
+                    .filter-dropdown-menu .dropdown-item.active:hover {
+                        background: #2563eb;
+                        transform: translateX(0);
+                    }
+
+                    .filter-dropdown-menu .dropdown-divider {
+                        margin: 8px 0;
+                        border-top: 1px solid #e5e7eb;
+                    }
+
+                    .filter-dropdown-menu .dropdown-item.text-muted {
+                        color: #6b7280 !important;
+                        font-weight: 400;
+                        font-size: 13px;
+                    }
+
+                    .filter-dropdown-menu .dropdown-item.text-muted:hover {
+                        background: #fef2f2;
+                        color: #dc2626 !important;
+                    }
+
+                    .filter-dropdown-menu .dropdown-item i {
+                        width: 16px;
+                        text-align: center;
+                    }
+
+                    /* Professional table header styles */
+                    .filterable-header {
+                        cursor: pointer;
+                        user-select: none;
+                        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+                        border-bottom: 2px solid #dee2e6 !important;
+                        position: relative;
+                        transition: all 0.2s ease;
+                    }
+
+                    .filterable-header:hover {
+                        background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
+                        transform: translateY(-1px);
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                    }
+
+                    .filterable-header .header-content {
+                        display: flex;
+                        align-items: center;
+                        justify-content: space-between;
+                        padding: 2px;
+                        gap: 8px;
+                    }
+
+                    .filterable-header .header-text {
+                        font-weight: 600;
+                        color: #495057;
+                        font-size: 13px;
+                        letter-spacing: 0.5px;
+                    }
+
+                    .filterable-header .header-icon {
+                        font-size: 11px;
+                        color: #6c757d;
+                        transition: all 0.2s ease;
+                        opacity: 0.7;
+                    }
+
+                    .filterable-header:hover .header-icon {
+                        color: #495057;
+                        opacity: 1;
+                        transform: scale(1.1);
+                    }
+
+                    .filterable-header.active .header-icon {
+                        color: #007bff;
+                        opacity: 1;
+                    }
+
+                    /* Active filter badges professional styling */
+                    #activeFilters {
+                        background: #f8f9fa;
+                        border: 1px solid #e9ecef;
+                        border-radius: 8px;
+                        padding: 12px 16px;
+                    }
+
+                    #activeFilters .badge {
+                        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+                        border: none;
+                        padding: 6px 12px;
+                        border-radius: 20px;
+                        font-weight: 500;
+                        font-size: 12px;
+                        box-shadow: 0 2px 4px rgba(0,123,255,0.3);
+                        transition: all 0.2s ease;
+                    }
+
+                    #activeFilters .badge:hover {
+                        transform: translateY(-1px);
+                        box-shadow: 0 4px 8px rgba(0,123,255,0.4);
+                    }
+
+                    #activeFilters .badge i {
+                        transition: transform 0.2s ease;
+                    }
+
+                    #activeFilters .badge:hover i {
+                        transform: scale(1.2);
+                    }
+
+                    #clearAllFilters {
+                        border-radius: 20px;
+                        padding: 4px 12px;
+                        font-size: 12px;
+                        font-weight: 500;
+                        transition: all 0.2s ease;
+                    }
+
+                    #clearAllFilters:hover {
+                        transform: translateY(-1px);
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+
+            menu.classList.add('filter-dropdown-menu');
+
+            let menuContent = '';
+
+            if (column === 'date') {
+                menuContent = `
+                    <button class="dropdown-item" data-sort="asc">
+                        <i class="fas fa-sort-amount-up"></i> Eskiden Yeniye
+                    </button>
+                    <button class="dropdown-item" data-sort="desc">
+                        <i class="fas fa-sort-amount-down"></i> Yeniden Eskiye
+                    </button>
+                    ${sortOrder ? '<div class="dropdown-divider"></div><button class="dropdown-item text-muted" data-sort="clear"><i class="fas fa-times"></i> Sıralamayı Kaldır</button>' : ''}
+                `;
+            } else if (column === 'type') {
+                const types = [...new Set(allMovements.map(mov => mov.type))];
+                menuContent = types.map(type => `
+                    <button class="dropdown-item ${activeFilters.type === type ? 'active bg-primary text-white' : ''}"
+                            data-filter="type" data-value="${type}">
+                        ${type}
+                    </button>
+                `).join('') + (activeFilters.type ?
+                    '<div class="dropdown-divider"></div><button class="dropdown-item text-muted" data-clear="type"><i class="fas fa-times"></i> Filtreyi Kaldır</button>' : ''
+                );
+            } else if (column === 'project') {
+                const projects = [...new Set(allMovements.map(mov => mov.projects?.project_name || '-'))];
+                menuContent = projects.map(project => `
+                    <button class="dropdown-item ${activeFilters.project === project ? 'active bg-primary text-white' : ''}"
+                            data-filter="project" data-value="${project}">
+                        ${project}
+                    </button>
+                `).join('') + (activeFilters.project ?
+                    '<div class="dropdown-divider"></div><button class="dropdown-item text-muted" data-clear="project"><i class="fas fa-times"></i> Filtreyi Kaldır</button>' : ''
+                );
+            }
+
+            menu.innerHTML = menuContent;
+            document.body.appendChild(menu);
+            currentFilterMenu = menu;
+
+            // Position menu if it goes off screen
+            const rect = menu.getBoundingClientRect();
+            if (rect.right > window.innerWidth) {
+                menu.style.left = (event.clientX - rect.width) + 'px';
+            }
+            if (rect.bottom > window.innerHeight) {
+                menu.style.top = (event.clientY - rect.height) + 'px';
+            }
+        }
+
+        // Event delegation for table clicks - attach to table itself
+        const tableElement = document.querySelector('#movementsTableBody').closest('table');
+        if (!tableElement) {
+            console.error('Table element not found');
+            return;
+        }
+
+        // Add click handler to table headers
+        const tableHeaders = document.querySelectorAll('[data-column]');
+
+        tableHeaders.forEach(header => {
+            header.addEventListener('click', (e) => {
+                const column = header.getAttribute('data-column');
+                showFilterMenu(column, e);
+            });
+        });
+
+        // Handle menu clicks and other interactions
+        const handleDocumentClick = (e) => {
+            // Filter menu clicks
+            if (currentFilterMenu && currentFilterMenu.contains(e.target)) {
+                const button = e.target.closest('button');
+                if (!button) return;
+
+                // Sort actions
+                const sortAction = button.getAttribute('data-sort');
+                if (sortAction) {
+                    if (sortAction === 'clear') {
+                        sortOrder = null;
+                        const dateIcon = document.querySelector('[data-column="date"] i');
+                        if (dateIcon) dateIcon.className = 'fas fa-sort text-muted';
+                    } else {
+                        sortOrder = sortAction;
+                        const dateIcon = document.querySelector('[data-column="date"] i');
+                        if (dateIcon) {
+                            dateIcon.className = sortAction === 'asc' ? 'fas fa-sort-up text-primary' : 'fas fa-sort-down text-primary';
+                        }
+                    }
+                    closeMenu();
+                    applyFilters();
+                    return;
+                }
+
+                // Filter actions
+                const filterType = button.getAttribute('data-filter');
+                const filterValue = button.getAttribute('data-value');
+                if (filterType && filterValue) {
+                    if (activeFilters[filterType] === filterValue) {
+                        delete activeFilters[filterType];
+                    } else {
+                        activeFilters[filterType] = filterValue;
+                    }
+                    closeMenu();
+                    applyFilters();
+                    return;
+                }
+
+                // Clear filter actions
+                const clearFilter = button.getAttribute('data-clear');
+                if (clearFilter) {
+                    delete activeFilters[clearFilter];
+                    closeMenu();
+                    applyFilters();
+                    return;
+                }
+                return;
+            }
+
+            // Filter badge removal clicks
+            const filterBadge = e.target.closest('[data-filter-badge]');
+            if (filterBadge && e.target.classList.contains('fa-times')) {
+                const filterKey = filterBadge.getAttribute('data-filter-badge');
+                delete activeFilters[filterKey];
+                applyFilters();
+                return;
+            }
+
+            // Clear all filters button
+            if (e.target.closest('#clearAllFilters')) {
+                activeFilters = {};
+                sortOrder = null;
+                const dateIcon = document.querySelector('[data-column="date"] i');
+                if (dateIcon) dateIcon.className = 'fas fa-sort text-muted';
+                applyFilters();
+                return;
+            }
+
+            // Close menu on any other click
+            closeMenu();
+        };
+
+        // Add document click handler with small delay to avoid immediate closure
+        setTimeout(() => {
+            document.addEventListener('click', handleDocumentClick);
+        }, 100);
+
+        // Initial render
+        renderMovements(allMovements);
+
+    }, 100); // Small delay to ensure DOM is ready
+}
+
 // Edit Product
 window.editProduct = function(productId) {
     window.openProductModal(productId);
+};
+
+// Excel Upload Modal
+window.openExcelUploadModal = function() {
+    const modal = new Modal({
+        title: 'Excel ile Ürün Yükleme',
+        content: `
+            <style>
+                .excel-upload-modal {
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                }
+
+                .upload-header {
+                    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+                    color: white;
+                    padding: 20px;
+                    margin: -20px -20px 30px -20px;
+                    border-radius: 8px 8px 0 0;
+                    text-align: center;
+                }
+
+                .upload-header h4 {
+                    margin: 0;
+                    font-weight: 600;
+                    font-size: 18px;
+                }
+
+                .upload-header p {
+                    margin: 8px 0 0 0;
+                    opacity: 0.9;
+                    font-size: 14px;
+                }
+
+                .format-info-card {
+                    background: #f8f9fa;
+                    border: 1px solid #e9ecef;
+                    border-radius: 12px;
+                    padding: 20px;
+                    margin-bottom: 25px;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+                }
+
+                .format-info-header {
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                    margin-bottom: 15px;
+                    color: #495057;
+                }
+
+                .format-info-header i {
+                    background: linear-gradient(135deg, #007bff, #0056b3);
+                    color: white;
+                    padding: 8px;
+                    border-radius: 50%;
+                    font-size: 14px;
+                    width: 32px;
+                    height: 32px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+
+                .format-info-header h6 {
+                    margin: 0;
+                    font-weight: 600;
+                    font-size: 16px;
+                }
+
+                .columns-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                    gap: 12px;
+                    margin-bottom: 20px;
+                }
+
+                .column-item {
+                    background: white;
+                    border: 1px solid #dee2e6;
+                    border-radius: 8px;
+                    padding: 12px;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    transition: all 0.2s ease;
+                }
+
+                .column-item:hover {
+                    border-color: #007bff;
+                    box-shadow: 0 2px 8px rgba(0,123,255,0.15);
+                    transform: translateY(-1px);
+                }
+
+                .column-item i {
+                    color: #007bff;
+                    width: 16px;
+                }
+
+                .column-text {
+                    flex: 1;
+                }
+
+                .column-name {
+                    font-weight: 600;
+                    color: #495057;
+                    font-size: 13px;
+                }
+
+                .column-desc {
+                    color: #6c757d;
+                    font-size: 11px;
+                    margin-top: 2px;
+                }
+
+                .required-badge {
+                    background: #dc3545;
+                    color: white;
+                    font-size: 10px;
+                    padding: 2px 6px;
+                    border-radius: 10px;
+                    font-weight: 500;
+                }
+
+                .optional-badge {
+                    background: #6c757d;
+                    color: white;
+                    font-size: 10px;
+                    padding: 2px 6px;
+                    border-radius: 10px;
+                    font-weight: 500;
+                }
+
+                .template-download {
+                    background: linear-gradient(135deg, #17a2b8, #138496);
+                    color: white;
+                    padding: 12px 20px;
+                    border-radius: 10px;
+                    text-decoration: none;
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 8px;
+                    font-weight: 500;
+                    transition: all 0.2s ease;
+                    border: none;
+                    cursor: pointer;
+                }
+
+                .template-download:hover {
+                    color: white;
+                    text-decoration: none;
+                    transform: translateY(-2px);
+                    box-shadow: 0 4px 12px rgba(23,162,184,0.3);
+                }
+
+                .upload-section {
+                    background: white;
+                    border: 2px dashed #dee2e6;
+                    border-radius: 12px;
+                    padding: 25px;
+                    margin-bottom: 25px;
+                    text-align: center;
+                    transition: all 0.2s ease;
+                }
+
+                .upload-section.drag-over {
+                    border-color: #007bff;
+                    background: #f8f9fa;
+                }
+
+                .upload-section:hover {
+                    border-color: #007bff;
+                    background: #f8f9fa;
+                }
+
+                .file-input-wrapper {
+                    position: relative;
+                    overflow: hidden;
+                    display: inline-block;
+                }
+
+                .file-input-styled {
+                    background: linear-gradient(135deg, #007bff, #0056b3);
+                    color: white;
+                    padding: 12px 24px;
+                    border-radius: 8px;
+                    border: none;
+                    font-weight: 500;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                }
+
+                .file-input-styled:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 4px 12px rgba(0,123,255,0.3);
+                }
+
+                .file-input-real {
+                    position: absolute;
+                    left: 0;
+                    top: 0;
+                    opacity: 0;
+                    cursor: pointer;
+                    width: 100%;
+                    height: 100%;
+                }
+
+                .selected-file {
+                    margin-top: 15px;
+                    padding: 10px 15px;
+                    background: #d4edda;
+                    border: 1px solid #c3e6cb;
+                    border-radius: 8px;
+                    color: #155724;
+                    display: none;
+                }
+
+                .options-section {
+                    background: #f8f9fa;
+                    border: 1px solid #e9ecef;
+                    border-radius: 12px;
+                    padding: 20px;
+                    margin-bottom: 25px;
+                }
+
+                .options-title {
+                    color: #495057;
+                    font-weight: 600;
+                    margin-bottom: 15px;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                }
+
+                .custom-checkbox-modern {
+                    margin-bottom: 12px;
+                }
+
+                .custom-checkbox-modern .custom-control-label {
+                    font-weight: 500;
+                    color: #495057;
+                    cursor: pointer;
+                    padding-left: 8px;
+                }
+
+                .custom-checkbox-modern .custom-control-label::before {
+                    border-radius: 6px;
+                    border: 2px solid #dee2e6;
+                    transition: all 0.2s ease;
+                }
+
+                .custom-checkbox-modern .custom-control-input:checked ~ .custom-control-label::before {
+                    background: linear-gradient(135deg, #28a745, #20c997);
+                    border-color: #28a745;
+                }
+
+                .progress-section {
+                    background: #f8f9fa;
+                    border: 1px solid #e9ecef;
+                    border-radius: 12px;
+                    padding: 20px;
+                    margin-bottom: 20px;
+                }
+
+                .progress-modern {
+                    height: 10px;
+                    border-radius: 10px;
+                    background: #e9ecef;
+                    overflow: hidden;
+                    margin-bottom: 10px;
+                }
+
+                .progress-bar-modern {
+                    height: 100%;
+                    background: linear-gradient(90deg, #28a745, #20c997);
+                    border-radius: 10px;
+                    transition: width 0.3s ease;
+                    position: relative;
+                    overflow: hidden;
+                }
+
+                .progress-bar-modern::after {
+                    content: '';
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    bottom: 0;
+                    right: 0;
+                    background: linear-gradient(
+                        90deg,
+                        transparent,
+                        rgba(255,255,255,0.2),
+                        transparent
+                    );
+                    animation: shimmer 2s infinite;
+                }
+
+                @keyframes shimmer {
+                    0% { transform: translateX(-100%); }
+                    100% { transform: translateX(100%); }
+                }
+
+                .modal-footer-modern {
+                    border-top: 1px solid #e9ecef;
+                    padding-top: 20px;
+                    margin-top: 30px;
+                    display: flex;
+                    gap: 12px;
+                    justify-content: flex-end;
+                }
+
+                .btn-modern-cancel {
+                    background: #6c757d;
+                    color: white;
+                    border: none;
+                    padding: 10px 20px;
+                    border-radius: 8px;
+                    font-weight: 500;
+                    transition: all 0.2s ease;
+                }
+
+                .btn-modern-cancel:hover {
+                    background: #545b62;
+                    transform: translateY(-1px);
+                }
+
+                .btn-modern-submit {
+                    background: linear-gradient(135deg, #28a745, #20c997);
+                    color: white;
+                    border: none;
+                    padding: 10px 24px;
+                    border-radius: 8px;
+                    font-weight: 500;
+                    transition: all 0.2s ease;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                }
+
+                .btn-modern-submit:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 4px 12px rgba(40,167,69,0.3);
+                }
+
+                .btn-modern-submit:disabled {
+                    opacity: 0.6;
+                    cursor: not-allowed;
+                    transform: none;
+                }
+            </style>
+
+            <div class="excel-upload-modal">
+                <div class="upload-header">
+                    <h4><i class="fas fa-file-excel"></i> Excel ile Toplu Ürün Yükleme</h4>
+                    <p>Envanterinizi hızlı ve kolay bir şekilde güncelleyin</p>
+                </div>
+
+                <div class="format-info-card">
+                    <div class="format-info-header">
+                        <i class="fas fa-table"></i>
+                        <h6>Excel Dosyası Format Bilgileri</h6>
+                    </div>
+
+                    <div class="columns-grid">
+                        <div class="column-item">
+                            <i class="fas fa-asterisk"></i>
+                            <div class="column-text">
+                                <div class="column-name">Ürün Adı</div>
+                                <div class="column-desc">Ürün ismi</div>
+                            </div>
+                            <span class="required-badge">Zorunlu</span>
+                        </div>
+
+                        <div class="column-item">
+                            <i class="fas fa-barcode"></i>
+                            <div class="column-text">
+                                <div class="column-name">Ürün Kodu</div>
+                                <div class="column-desc">Benzersiz kod</div>
+                            </div>
+                            <span class="optional-badge">İsteğe bağlı</span>
+                        </div>
+
+                        <div class="column-item">
+                            <i class="fas fa-ruler"></i>
+                            <div class="column-text">
+                                <div class="column-name">Birim</div>
+                                <div class="column-desc">Adet, Kg, Metre vb.</div>
+                            </div>
+                            <span class="optional-badge">İsteğe bağlı</span>
+                        </div>
+
+                        <div class="column-item">
+                            <i class="fas fa-cubes"></i>
+                            <div class="column-text">
+                                <div class="column-name">Stok Miktarı</div>
+                                <div class="column-desc">Mevcut miktar</div>
+                            </div>
+                            <span class="optional-badge">İsteğe bağlı</span>
+                        </div>
+
+                        <div class="column-item">
+                            <i class="fas fa-tags"></i>
+                            <div class="column-text">
+                                <div class="column-name">Ana Kategori</div>
+                                <div class="column-desc">VİDA, BOYA vb.</div>
+                            </div>
+                            <span class="optional-badge">İsteğe bağlı</span>
+                        </div>
+
+                        <div class="column-item">
+                            <i class="fas fa-tag"></i>
+                            <div class="column-text">
+                                <div class="column-name">Alt Kategori</div>
+                                <div class="column-desc">Detay kategori</div>
+                            </div>
+                            <span class="optional-badge">İsteğe bağlı</span>
+                        </div>
+                    </div>
+
+                    <div style="text-align: center;">
+                        <button onclick="downloadExcelTemplate()" class="template-download">
+                            <i class="fas fa-download"></i>
+                            Örnek Excel Şablonunu İndir
+                        </button>
+                    </div>
+                </div>
+
+                <form id="excelUploadForm">
+                    <div class="upload-section">
+                        <div class="file-input-wrapper">
+                            <button type="button" class="file-input-styled">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                Excel Dosyası Seçin
+                            </button>
+                            <input type="file" id="excelFile" class="file-input-real" accept=".xlsx,.xls" required>
+                        </div>
+                        <div class="selected-file" id="selectedFile">
+                            <i class="fas fa-file-excel"></i>
+                            <span id="fileName"></span>
+                        </div>
+                        <small class="text-muted mt-2">Desteklenen formatlar: .xlsx, .xls (Maksimum 10MB)</small>
+                    </div>
+
+                    <div class="options-section">
+                        <div class="options-title">
+                            <i class="fas fa-cogs"></i>
+                            İşlem Seçenekleri
+                        </div>
+
+                        <div class="custom-checkbox-modern">
+                            <div class="custom-control custom-checkbox">
+                                <input type="checkbox" class="custom-control-input" id="updateExisting">
+                                <label class="custom-control-label" for="updateExisting">
+                                    <i class="fas fa-sync-alt"></i> Mevcut ürünleri güncelle (Ürün kodu eşleşmesi ile)
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="custom-checkbox-modern">
+                            <div class="custom-control custom-checkbox">
+                                <input type="checkbox" class="custom-control-input" id="addMissingProducts" checked>
+                                <label class="custom-control-label" for="addMissingProducts">
+                                    <i class="fas fa-plus-circle"></i> Yeni ürünleri sisteme ekle
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="uploadProgress" class="progress-section" style="display: none;">
+                        <div class="progress-modern">
+                            <div id="progressBar" class="progress-bar-modern" style="width: 0%"></div>
+                        </div>
+                        <div style="text-align: center;">
+                            <small id="progressText" class="text-muted">Hazırlanıyor...</small>
+                        </div>
+                    </div>
+
+                    <div id="uploadResults" style="display: none;" class="mt-3">
+                        <!-- Sonuçlar buraya gelecek -->
+                    </div>
+
+                    <div class="modal-footer-modern">
+                        <button type="button" class="btn-modern-cancel" onclick="this.closest('.modal').querySelector('.modal-close').click()">
+                            İptal
+                        </button>
+                        <button type="submit" class="btn-modern-submit">
+                            <i class="fas fa-upload"></i>
+                            Yükle ve İşle
+                        </button>
+                    </div>
+                </form>
+            </div>
+        `,
+        size: 'large'
+    });
+
+    modal.show();
+
+    // Setup form handler
+    const form = document.getElementById('excelUploadForm');
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await processExcelUpload();
+    });
+};
+
+// Excel Processing Functions
+async function loadSheetJS() {
+    if (window.XLSX) return; // Already loaded
+
+    return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+    });
+}
+
+async function processExcelUpload() {
+    try {
+        const fileInput = document.getElementById('excelFile');
+        const updateExisting = document.getElementById('updateExisting').checked;
+        const addMissingProducts = document.getElementById('addMissingProducts').checked;
+        const progressDiv = document.getElementById('uploadProgress');
+        const progressBar = document.getElementById('progressBar');
+        const progressText = document.getElementById('progressText');
+        const resultsDiv = document.getElementById('uploadResults');
+
+        if (!fileInput.files.length) {
+            Toast.error('Lütfen bir Excel dosyası seçin');
+            return;
+        }
+
+        const file = fileInput.files[0];
+
+        // Show progress
+        progressDiv.style.display = 'block';
+        progressText.textContent = 'SheetJS kütüphanesi yükleniyor...';
+        progressBar.style.width = '10%';
+
+        // Load SheetJS library
+        await loadSheetJS();
+
+        progressText.textContent = 'Excel dosyası okunuyor...';
+        progressBar.style.width = '30%';
+
+        // Read Excel file
+        const data = await readExcelFile(file);
+
+        progressText.textContent = 'Veriler işleniyor...';
+        progressBar.style.width = '50%';
+
+        // Parse and validate data
+        const parsedData = parseExcelData(data);
+
+        if (parsedData.length === 0) {
+            throw new Error('Excel dosyasında geçerli veri bulunamadı');
+        }
+
+        progressText.textContent = 'Ürünler veritabanına işleniyor...';
+        progressBar.style.width = '70%';
+
+        // Process products
+        const results = await processProducts(parsedData, updateExisting, addMissingProducts, (progress) => {
+            const currentProgress = 70 + (progress * 30 / 100);
+            progressBar.style.width = currentProgress + '%';
+            progressText.textContent = `Ürünler işleniyor... (${Math.round(progress)}%)`;
+        });
+
+        progressBar.style.width = '100%';
+        progressText.textContent = 'İşlem tamamlandı!';
+
+        // Show results
+        showUploadResults(results);
+
+        // Refresh product list
+        await loadProducts();
+
+        Toast.success(`İşlem tamamlandı! ${results.success} ürün başarıyla işlendi.`);
+
+    } catch (error) {
+        console.error('Excel yükleme hatası:', error);
+        Toast.error('Excel dosyası işlenirken hata oluştu: ' + error.message);
+
+        const resultsDiv = document.getElementById('uploadResults');
+        resultsDiv.style.display = 'block';
+        resultsDiv.innerHTML = `
+            <div class="alert alert-danger">
+                <h5><i class="fas fa-exclamation-triangle"></i> Hata</h5>
+                <p>${error.message}</p>
+            </div>
+        `;
+    }
+}
+
+function readExcelFile(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+
+                if (workbook.SheetNames.length === 0) {
+                    reject(new Error('Excel dosyasında sayfa bulunamadı'));
+                    return;
+                }
+
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                resolve(jsonData);
+            } catch (error) {
+                reject(new Error('Excel dosyası okunamadı: ' + error.message));
+            }
+        };
+        reader.onerror = () => reject(new Error('Dosya okuma hatası'));
+        reader.readAsArrayBuffer(file);
+    });
+}
+
+function parseExcelData(rawData) {
+    if (rawData.length < 2) {
+        throw new Error('Excel dosyasında yeterli veri yok (en az başlık satırı + 1 veri satırı gerekli)');
+    }
+
+    const headers = rawData[0].map(h => h ? h.toString().toLowerCase().trim() : '');
+    const rows = rawData.slice(1);
+
+    // Find column indices
+    const columnMap = {
+        name: findColumnIndex(headers, ['ürün adı', 'urun adi', 'name', 'product name']),
+        code: findColumnIndex(headers, ['ürün kodu', 'urun kodu', 'code', 'product code']),
+        unit: findColumnIndex(headers, ['birim', 'unit']),
+        stock: findColumnIndex(headers, ['stok', 'stok miktarı', 'stock', 'quantity']),
+        category: findColumnIndex(headers, ['ana kategori', 'kategori', 'category']),
+        subcategory: findColumnIndex(headers, ['alt kategori', 'subcategory']),
+        weight: findColumnIndex(headers, ['birim ağırlık', 'ağırlık', 'weight'])
+    };
+
+    if (columnMap.name === -1) {
+        throw new Error('Excel dosyasında "Ürün Adı" kolonu bulunamadı');
+    }
+
+    const parsedProducts = [];
+
+    rows.forEach((row, index) => {
+        if (!row || row.length === 0 || !row[columnMap.name]) return;
+
+        try {
+            const product = {
+                product_name: cleanString(row[columnMap.name]),
+                product_code: columnMap.code !== -1 ? cleanString(row[columnMap.code]) : null,
+                unit: columnMap.unit !== -1 ? cleanString(row[columnMap.unit]) || 'Adet' : 'Adet',
+                current_stock: columnMap.stock !== -1 ? parseFloat(row[columnMap.stock]) || 0 : 0,
+                category: columnMap.category !== -1 ? cleanString(row[columnMap.category]) : null,
+                subcategory: columnMap.subcategory !== -1 ? cleanString(row[columnMap.subcategory]) : null,
+                unit_weight: columnMap.weight !== -1 ? parseFloat(row[columnMap.weight]) || 0 : 0,
+                min_stock_level: 0,
+                row_number: index + 2 // Excel row number (1-based + header)
+            };
+
+            // Validate required fields
+            if (!product.product_name.trim()) {
+                console.warn(`Satır ${product.row_number}: Ürün adı boş, atlanıyor`);
+                return;
+            }
+
+            // Validate unit
+            const validUnits = ['Adet', 'Kg', 'Metre', 'M2', 'M3', 'Litre', 'Paket'];
+            if (!validUnits.includes(product.unit)) {
+                console.warn(`Satır ${product.row_number}: Geçersiz birim "${product.unit}", "Adet" olarak ayarlanıyor`);
+                product.unit = 'Adet';
+            }
+
+            parsedProducts.push(product);
+
+        } catch (error) {
+            console.warn(`Satır ${index + 2}: Parse hatası - ${error.message}`);
+        }
+    });
+
+    return parsedProducts;
+}
+
+function findColumnIndex(headers, possibleNames) {
+    for (const name of possibleNames) {
+        const index = headers.findIndex(h => h.includes(name.toLowerCase()));
+        if (index !== -1) return index;
+    }
+    return -1;
+}
+
+function cleanString(value) {
+    if (value === null || value === undefined) return '';
+    return value.toString().trim();
+}
+
+async function processProducts(products, updateExisting, addMissingProducts, progressCallback) {
+    const results = {
+        success: 0,
+        updated: 0,
+        added: 0,
+        skipped: 0,
+        errors: [],
+        processed: []
+    };
+
+    // Get existing products if update is enabled
+    let existingProducts = [];
+    if (updateExisting) {
+        const { data, error } = await productService.getAll();
+        if (!error && data) {
+            existingProducts = data;
+        }
+    }
+
+    for (let i = 0; i < products.length; i++) {
+        const product = products[i];
+
+        try {
+            let existingProduct = null;
+            if (updateExisting && product.product_code) {
+                existingProduct = existingProducts.find(p => p.product_code === product.product_code);
+            }
+
+            if (existingProduct) {
+                // Update existing product
+                const { error } = await productService.update(existingProduct.id, product);
+                if (error) {
+                    throw error;
+                }
+                results.updated++;
+                results.success++;
+                results.processed.push({ ...product, action: 'updated', id: existingProduct.id });
+            } else if (addMissingProducts) {
+                // Add new product
+                const { data, error } = await productService.create(product);
+                if (error) {
+                    throw error;
+                }
+                results.added++;
+                results.success++;
+                results.processed.push({ ...product, action: 'added', id: data.id });
+            } else {
+                results.skipped++;
+                results.processed.push({ ...product, action: 'skipped' });
+            }
+
+        } catch (error) {
+            results.errors.push({
+                row: product.row_number,
+                product: product.product_name,
+                error: error.message
+            });
+        }
+
+        // Update progress
+        const progress = ((i + 1) / products.length) * 100;
+        progressCallback(progress);
+
+        // Small delay to prevent overwhelming the database
+        if (i % 10 === 0) {
+            await new Promise(resolve => setTimeout(resolve, 50));
+        }
+    }
+
+    return results;
+}
+
+function showUploadResults(results) {
+    const resultsDiv = document.getElementById('uploadResults');
+    resultsDiv.style.display = 'block';
+
+    let html = `
+        <div class="alert alert-success">
+            <h5><i class="fas fa-check-circle"></i> İşlem Tamamlandı</h5>
+            <div class="row">
+                <div class="col-md-3">
+                    <strong>Toplam İşlenen:</strong><br>
+                    <span class="badge badge-primary">${results.success + results.errors.length}</span>
+                </div>
+                <div class="col-md-3">
+                    <strong>Başarılı:</strong><br>
+                    <span class="badge badge-success">${results.success}</span>
+                </div>
+                <div class="col-md-3">
+                    <strong>Eklenen:</strong><br>
+                    <span class="badge badge-info">${results.added}</span>
+                </div>
+                <div class="col-md-3">
+                    <strong>Güncellenen:</strong><br>
+                    <span class="badge badge-warning">${results.updated}</span>
+                </div>
+            </div>
+        </div>
+    `;
+
+    if (results.errors.length > 0) {
+        html += `
+            <div class="alert alert-warning">
+                <h6><i class="fas fa-exclamation-triangle"></i> Hatalar (${results.errors.length})</h6>
+                <div style="max-height: 200px; overflow-y: auto;">
+                    ${results.errors.map(err =>
+                        `<small>Satır ${err.row} - ${err.product}: ${err.error}</small>`
+                    ).join('<br>')}
+                </div>
+            </div>
+        `;
+    }
+
+    resultsDiv.innerHTML = html;
+}
+
+// Download Excel Template
+window.downloadExcelTemplate = async function() {
+    // Ensure XLSX library is loaded
+    if (typeof XLSX === 'undefined') {
+        try {
+            await loadSheetJS();
+        } catch (error) {
+            console.error('XLSX kütüphanesi yüklenemedi:', error);
+            alert('Excel kütüphanesi yüklenemedi. Lütfen sayfayı yenileyin.');
+            return;
+        }
+    }
+
+    const templateData = [
+        ['Ürün Adı', 'Ürün Kodu', 'Birim', 'Stok Miktarı', 'Ana Kategori', 'Alt Kategori', 'Birim Ağırlık'],
+        ['Örnek Vida M8x20', 'VID-001', 'Adet', 100, 'VİDA', 'M8', 0.05],
+        ['Örnek Boya Beyaz', 'BOY-001', 'Litre', 25, 'BOYA', 'Duvar Boyası', 1.2],
+        ['Örnek Elektrod', 'ELK-001', 'Kg', 50, 'ELEKTROD', 'Özçelik', 1.0]
+    ];
+
+    try {
+        // Create workbook with proper formatting
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet(templateData);
+
+        // Set column widths for better readability
+        const wscols = [
+            { wch: 20 }, // Ürün Adı
+            { wch: 12 }, // Ürün Kodu
+            { wch: 8 },  // Birim
+            { wch: 12 }, // Stok Miktarı
+            { wch: 15 }, // Ana Kategori
+            { wch: 15 }, // Alt Kategori
+            { wch: 12 }  // Birim Ağırlık
+        ];
+        ws['!cols'] = wscols;
+
+        // Format header row
+        const headerRange = XLSX.utils.decode_range(ws['!ref']);
+        for (let col = headerRange.s.c; col <= headerRange.e.c; col++) {
+            const cellAddress = XLSX.utils.encode_cell({ r: 0, c: col });
+            if (!ws[cellAddress]) continue;
+            ws[cellAddress].s = {
+                font: { bold: true, sz: 12 },
+                fill: { fgColor: { rgb: "E6E6FA" } },
+                alignment: { horizontal: "center" }
+            };
+        }
+
+        // Add worksheet to workbook
+        XLSX.utils.book_append_sheet(wb, ws, 'Urunler');
+
+        // Create proper Excel file with correct MIME type
+        const wbout = XLSX.write(wb, {
+            bookType: 'xlsx',
+            type: 'array',
+            compression: true
+        });
+
+        // Create blob and download
+        const blob = new Blob([wbout], {
+            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        });
+
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.href = url;
+        link.download = 'urun_sablonu.xlsx';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        console.log('Excel şablonu başarıyla oluşturuldu');
+    } catch (error) {
+        console.error('Excel şablonu oluşturulamadı:', error);
+        alert('Excel şablonu oluşturulamadı. Hata: ' + error.message);
+    }
 };
 
 // Manual Stock Movement Modal
@@ -380,8 +1741,8 @@ window.openStockMovementModal = async function(productId) {
                             <div class="form-group col-md-6">
                                 <label>İşlem Tipi <span class="required">*</span></label>
                                 <select id="movementType" class="form-control" required>
-                                    <option value="Giriş">Stok Girişi</option>
-                                    <option value="Çıkış">Stok Çıkışı</option>
+                                    <option value="Giriş">Satın Alım</option>
+                                    <option value="Çıkış">Satış</option>
                                 </select>
                             </div>
                             
@@ -561,8 +1922,8 @@ window.openBarcodeModal = async function(productId) {
                                 <div class="form-group">
                                     <label>İşlem Tipi <span class="required">*</span></label>
                                     <select id="barcodeMovementType" class="form-control" required>
-                                        <option value="Giriş">Stok Girişi</option>
-                                        <option value="Çıkış">Stok Çıkışı</option>
+                                        <option value="Giriş">Satın Alım</option>
+                                        <option value="Çıkış">Satış</option>
                                     </select>
                                 </div>
                                 

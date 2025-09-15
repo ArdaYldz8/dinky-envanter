@@ -1906,3 +1906,144 @@ body {
         font-size: 13px;
     }
 }
+
+/* Status Badges */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+    transition: all 0.2s ease;
+    border: none;
+}
+
+.status-badge:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.status-success {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: #fff;
+}
+
+.status-warning {
+    background: linear-gradient(135deg, #ffc107, #fd7e14);
+    color: #fff;
+}
+
+.status-danger {
+    background: linear-gradient(135deg, #dc3545, #e83e8c);
+    color: #fff;
+}
+
+.status-info {
+    background: linear-gradient(135deg, #17a2b8, #6f42c1);
+    color: #fff;
+}
+
+/* Custom Hours Input Styling */
+.custom-hours {
+    margin-top: 8px !important;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    text-align: center;
+    background: linear-gradient(135deg, #f8f9fa, #fff);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.custom-hours:focus {
+    border-color: #17a2b8;
+    box-shadow: 0 0 0 3px rgba(23, 162, 184, 0.15);
+    background: #fff;
+    outline: none;
+    transform: translateY(-1px);
+}
+
+.custom-hours:hover {
+    border-color: #6c757d;
+    background: #fff;
+}
+
+.custom-hours::placeholder {
+    color: #6c757d;
+    font-weight: 500;
+}
+
+/* Attendance Status Select Professional Styling */
+.attendance-status {
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    background: linear-gradient(135deg, #f8f9fa, #fff);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.attendance-status:focus {
+    border-color: #495057;
+    box-shadow: 0 0 0 3px rgba(73, 80, 87, 0.15);
+    background: #fff;
+    outline: none;
+    transform: translateY(-1px);
+}
+
+.attendance-status:hover {
+    border-color: #6c757d;
+    background: #fff;
+}
+
+/* Professional Status Container */
+.status-container {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* Custom Hours Label Animation */
+.custom-hours-label {
+    position: absolute;
+    top: -8px;
+    left: 12px;
+    background: #fff;
+    padding: 0 6px;
+    font-size: 11px;
+    color: #6c757d;
+    font-weight: 600;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.3s ease;
+    pointer-events: none;
+}
+
+.custom-hours:focus + .custom-hours-label,
+.custom-hours:not(:placeholder-shown) + .custom-hours-label {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Modified Row Highlighting */
+.modified-row {
+    background: linear-gradient(135deg, #fff3cd, #fef9e7);
+    border-left: 4px solid #ffc107;
+    box-shadow: 0 2px 4px rgba(255, 193, 7, 0.1);
+}
+
+.modified-row:hover {
+    background: linear-gradient(135deg, #fef9e7, #fff3cd);
+}

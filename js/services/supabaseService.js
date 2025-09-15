@@ -1053,19 +1053,26 @@ export const payrollService = {
                 );
                 if (attError) continue;
 
-                // Calculate working days
+                // Calculate working days and overtime
                 let fullDays = 0;
                 let halfDays = 0;
                 let absentDays = 0;
+                let customHours = 0;
+                let overtimeHours = 0;
 
                 attendance?.forEach(record => {
                     if (record.status === 'Tam Gün') fullDays++;
                     else if (record.status === 'Yarım Gün') halfDays++;
+                    else if (record.status === 'Serbest Saat') customHours += parseFloat(record.custom_hours) || 0;
                     else if (record.status === 'Gelmedi') absentDays++;
+
+                    // Add overtime hours
+                    overtimeHours += parseFloat(record.overtime_hours) || 0;
                 });
 
-                const totalDays = fullDays + (halfDays * 0.5);
-                const grossSalary = totalDays * employee.daily_wage;
+                const totalDays = fullDays + (halfDays * 0.5) + (customHours / 9);
+                const overtimePayment = overtimeHours * (employee.daily_wage / 9);
+                const grossSalary = (totalDays * employee.daily_wage) + overtimePayment;
 
                 // Get transactions (advances and deductions)
                 const { data: transactions, error: transError } = await transactionService.getByEmployee(
@@ -1089,6 +1096,8 @@ export const payrollService = {
                     halfDays,
                     absentDays,
                     totalDays,
+                    overtimeHours,
+                    overtimePayment,
                     grossSalary,
                     advances: totalAdvances,
                     deductions: totalDeductions,
@@ -1216,6 +1225,176 @@ export const taskService = {
             console.error('Error updating task assignment:', error);
             return { data: null, error };
         }
+    }
+};
+
+// Customer Service
+export const customerService = {
+    async getAll() {
+        const { data, error } = await supabase
+            .from('customers')
+            .select()
+            .order('company_name');
+        return { data, error };
+    },
+
+    async getActive() {
+        const { data, error } = await supabase
+            .from('customers')
+            .select()
+            .eq('is_active', true)
+            .order('company_name');
+        return { data, error };
+    },
+
+    async getById(id) {
+        const { data, error } = await supabase
+            .from('customers')
+            .select()
+            .eq('id', id)
+            .single();
+        return { data, error };
+    },
+
+    async getByCode(code) {
+        const { data, error } = await supabase
+            .from('customers')
+            .select()
+            .eq('customer_code', code)
+            .single();
+        return { data, error };
+    },
+
+    async create(customer) {
+        // Auto-generate customer code if not provided
+        if (!customer.customer_code) {
+            const { data: seqData } = await supabase.rpc('nextval', { sequence_name: 'customer_code_seq' });
+            customer.customer_code = `C${String(seqData).padStart(4, '0')}`;
+        }
+
+        const { data, error } = await supabase
+            .from('customers')
+            .insert([customer])
+            .select()
+            .single();
+
+        // Activity logging
+        if (!error && data) {
+            try {
+                const userInfo = this.getCurrentUserInfo();
+                await supabase.rpc('log_user_activity', {
+                    p_action_type: 'CREATE',
+                    p_table_name: 'customers',
+                    p_record_id: data.id,
+                    p_description: `Yeni cari hesap: ${data.company_name} (${data.customer_code})`,
+                    p_new_values: data,
+                    p_user_id: userInfo.id,
+                    p_user_name: userInfo.name,
+                    p_user_role: userInfo.role
+                });
+            } catch (logError) {
+                console.warn('Customer create activity logging failed:', logError);
+            }
+        }
+
+        return { data, error };
+    },
+
+    getCurrentUserInfo() {
+        const userStr = localStorage.getItem('dinky_user');
+        if (!userStr) {
+            return { id: null, name: 'Sistem', role: 'system' };
+        }
+        const user = JSON.parse(userStr);
+        return {
+            id: user.id,
+            name: user.name || user.full_name || user.email || 'Kullanıcı',
+            role: user.role || 'user'
+        };
+    },
+
+    async update(id, updates) {
+        // Get old data first
+        const { data: oldData } = await supabase
+            .from('customers')
+            .select()
+            .eq('id', id)
+            .single();
+
+        const { data, error } = await supabase
+            .from('customers')
+            .update(updates)
+            .eq('id', id)
+            .select()
+            .single();
+
+        // Activity logging
+        if (!error && data) {
+            try {
+                const userInfo = this.getCurrentUserInfo();
+                await supabase.rpc('log_user_activity', {
+                    p_action_type: 'UPDATE',
+                    p_table_name: 'customers',
+                    p_record_id: data.id,
+                    p_description: `Cari hesap güncellendi: ${data.company_name}`,
+                    p_old_values: oldData,
+                    p_new_values: data,
+                    p_user_id: userInfo.id,
+                    p_user_name: userInfo.name,
+                    p_user_role: userInfo.role
+                });
+            } catch (logError) {
+                console.warn('Customer update activity logging failed:', logError);
+            }
+        }
+
+        return { data, error };
+    },
+
+    async delete(id) {
+        // Get data before deletion
+        const { data: oldData } = await supabase
+            .from('customers')
+            .select()
+            .eq('id', id)
+            .single();
+
+        const { error } = await supabase
+            .from('customers')
+            .delete()
+            .eq('id', id);
+
+        // Activity logging
+        if (!error && oldData) {
+            try {
+                const userInfo = this.getCurrentUserInfo();
+                await supabase.rpc('log_user_activity', {
+                    p_action_type: 'DELETE',
+                    p_table_name: 'customers',
+                    p_record_id: oldData.id,
+                    p_description: `Cari hesap silindi: ${oldData.company_name}`,
+                    p_old_values: oldData,
+                    p_user_id: userInfo.id,
+                    p_user_name: userInfo.name,
+                    p_user_role: userInfo.role
+                });
+            } catch (logError) {
+                console.warn('Customer delete activity logging failed:', logError);
+            }
+        }
+
+        return { error };
+    },
+
+    async searchByName(searchTerm) {
+        const { data, error } = await supabase
+            .from('customers')
+            .select()
+            .or(`company_name.ilike.%${searchTerm}%,contact_person.ilike.%${searchTerm}%,customer_code.ilike.%${searchTerm}%`)
+            .eq('is_active', true)
+            .order('company_name')
+            .limit(10);
+        return { data, error };
     }
 };
 

@@ -71,7 +71,7 @@ async function loadEmployees() {
                         <span class="badge badge-info">${emp.department || '-'}</span>
                     </td>
                     <td>${formatter.currency(emp.daily_wage)}</td>
-                    <td><strong>${formatter.currency(emp.monthly_salary || emp.daily_wage * 26)}</strong></td>
+                    <td><strong>${formatter.currency(emp.monthly_salary || emp.daily_wage * 30)}</strong></td>
                     <td>${formatter.date(emp.start_date)}</td>
                     <td>
                         <button class="btn btn-sm btn-info" onclick="window.viewEmployeeDetails('${emp.id}')">
@@ -135,7 +135,7 @@ window.openEmployeeModal = function(employeeId = null) {
                 <div class="form-group">
                     <label>Günlük Ücret (₺)</label>
                     <input type="number" id="dailyWage" class="form-control" min="0" step="0.01" readonly>
-                    <small class="form-text text-muted">Otomatik hesaplanır (Aylık Maaş ÷ 26)</small>
+                    <small class="form-text text-muted">Otomatik hesaplanır (Aylık Maaş ÷ 30)</small>
                 </div>
                 
                 <div class="form-group">
@@ -176,7 +176,7 @@ window.openEmployeeModal = function(employeeId = null) {
     
     monthlySalaryInput.addEventListener('input', (e) => {
         const monthlySalary = parseFloat(e.target.value) || 0;
-        const dailyWage = (monthlySalary / 26).toFixed(2);
+        const dailyWage = (monthlySalary / 30).toFixed(2);
         dailyWageInput.value = dailyWage;
     });
 
@@ -349,7 +349,7 @@ window.viewEmployeeDetails = async function(employeeId) {
                         <h4>Personel Bilgileri</h4>
                         <p><strong>Birim:</strong> <span class="badge badge-info">${employee.department || '-'}</span></p>
                         <p><strong>Günlük Ücret:</strong> ${formatter.currency(employee.daily_wage)}</p>
-                        <p><strong>Aylık Maaş:</strong> <strong>${formatter.currency(employee.monthly_salary || employee.daily_wage * 26)}</strong></p>
+                        <p><strong>Aylık Maaş:</strong> <strong>${formatter.currency(employee.monthly_salary || employee.daily_wage * 30)}</strong></p>
                         <p><strong>İşe Başlama:</strong> ${formatter.date(employee.start_date)}</p>
                     </div>
                     

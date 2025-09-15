@@ -30,7 +30,7 @@ export async function loadBarcode() {
     content.innerHTML = `
         <div class="page-header">
             <h1><i class="fas fa-barcode"></i> Barkod ile Stok İşlemi</h1>
-            <p>Tüm stok giriş/çıkış işlemleri bu sayfadan barkod ile yapılır. Kamera veya manuel giriş seçenekleri mevcut.</p>
+            <p>Tüm satın alım/satış işlemleri bu sayfadan barkod ile yapılır. Kamera veya manuel giriş seçenekleri mevcut.</p>
         </div>
         
         <div class="barcode-container">
@@ -84,8 +84,8 @@ export async function loadBarcode() {
                         <div class="form-group">
                             <label>İşlem Tipi <span class="required">*</span></label>
                             <select id="movementType" class="form-control" required>
-                                <option value="Giriş">Stok Girişi</option>
-                                <option value="Çıkış">Stok Çıkışı</option>
+                                <option value="Giriş">Satın Alım</option>
+                                <option value="Çıkış">Satış</option>
                             </select>
                         </div>
                         
