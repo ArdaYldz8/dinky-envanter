@@ -15,7 +15,9 @@
       "Bash(git push:*)",
       "Bash(Start-Process \"http://localhost:8080\")",
       "Bash(npm install:*)",
-      "Bash(netlify:*)"
+      "Bash(netlify:*)",
+      "Bash(Start-Process \"http://localhost:8080/hash_generator.html\")",
+      "Bash(node:*)"
     ],
     "deny": [],
     "ask": []

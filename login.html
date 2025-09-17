@@ -186,16 +186,47 @@
             loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Giriş yapılıyor...';
             
             try {
-                // Temporary client-side authentication for demo
+                // Hash function for password security
+                async function hashPassword(password) {
+                    const encoder = new TextEncoder();
+                    const data = encoder.encode(password + 'dinky_salt_2025');
+                    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+                    const hashArray = Array.from(new Uint8Array(hashBuffer));
+                    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+                }
+
+                // Secure user database with hashed passwords
                 const demoUsers = {
-                    'admin@dinky.com': { password: 'Dinky2025Admin', name: 'Admin Kullanıcı', role: 'admin', id: '00000000-0000-0000-0000-000000000001' },
-                    'yonetim@dinky.com': { password: 'Yonetim2025Dinky', name: 'Yönetim', role: 'admin', id: '00000000-0000-0000-0000-000000000002' },
-                    'depo@dinky.com': { password: 'Depo2025Dinky', name: 'Depo Sorumlusu', role: 'warehouse', id: '00000000-0000-0000-0000-000000000003' },
-                    'muhasebe@dinky.com': { password: 'Muhasebe2025Dk', name: 'Muhasebe Personeli', role: 'accounting', id: '00000000-0000-0000-0000-000000000004' }
+                    'admin@dinky.com': {
+                        passwordHash: '128220a43250ef5d7a43bfbb18c7eab27204b6f19bb78437c157ea0ac0e44e7b',
+                        name: 'Admin Kullanıcı',
+                        role: 'admin',
+                        id: '00000000-0000-0000-0000-000000000001'
+                    },
+                    'yonetim@dinky.com': {
+                        passwordHash: '618d9b8d5fe707430eea13bece957cbf028f0d4392ad1217234a848a3ec3783f',
+                        name: 'Yönetim',
+                        role: 'admin',
+                        id: '00000000-0000-0000-0000-000000000002'
+                    },
+                    'depo@dinky.com': {
+                        passwordHash: '751734251e6b67367e47d69f13d9934fa803f06a49616eed29af4ec008e380f8',
+                        name: 'Depo Sorumlusu',
+                        role: 'warehouse',
+                        id: '00000000-0000-0000-0000-000000000003'
+                    },
+                    'muhasebe@dinky.com': {
+                        passwordHash: 'c0f555cdfd3814ab0a8fef20fe8cd81a4cca62915cc18dad5da675bd8f7166d0',
+                        name: 'Muhasebe Personeli',
+                        role: 'accounting',
+                        id: '00000000-0000-0000-0000-000000000004'
+                    }
                 };
-                
+
                 const user = demoUsers[email];
-                if (user && user.password === password) {
+                if (user) {
+                    const inputPasswordHash = await hashPassword(password);
+                    if (inputPasswordHash === user.passwordHash) {
                     // Store user session
                     const userData = {
                         id: user.id,
