@@ -225,10 +225,26 @@
             }
         });
         
-        // Check if already logged in
+        // Check if already logged in and validate session
         const currentUser = localStorage.getItem('dinky_user');
         if (currentUser) {
-            window.location.href = 'index.html';
+            try {
+                const userData = JSON.parse(currentUser);
+                // Check if login time is before password update (17.09.2025)
+                const loginTime = new Date(userData.loginTime);
+                const passwordUpdateTime = new Date('2025-09-17T20:00:00'); // Password update time
+
+                if (loginTime < passwordUpdateTime) {
+                    // Force logout for old sessions
+                    localStorage.removeItem('dinky_user');
+                    alert('Güvenlik güncellemesi nedeniyle oturumunuz sonlandırıldı. Lütfen yeni şifrenizle tekrar giriş yapın.');
+                } else {
+                    window.location.href = 'index.html';
+                }
+            } catch (e) {
+                // Invalid session data, clear it
+                localStorage.removeItem('dinky_user');
+            }
         }
     </script>
 </body>

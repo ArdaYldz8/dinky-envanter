@@ -42,8 +42,27 @@ function checkAuth() {
         window.location.href = 'login.html';
         return false;
     }
-    
-    currentUser = JSON.parse(userStr);
+
+    try {
+        currentUser = JSON.parse(userStr);
+
+        // Check if session is from before password update
+        const loginTime = new Date(currentUser.loginTime);
+        const passwordUpdateTime = new Date('2025-09-17T20:00:00'); // Password update time
+
+        if (loginTime < passwordUpdateTime) {
+            // Force logout for old sessions
+            localStorage.removeItem('dinky_user');
+            alert('Güvenlik güncellemesi nedeniyle oturumunuz sonlandırıldı. Lütfen yeni şifrenizle tekrar giriş yapın.');
+            window.location.href = 'login.html';
+            return false;
+        }
+    } catch (e) {
+        // Invalid session data
+        localStorage.removeItem('dinky_user');
+        window.location.href = 'login.html';
+        return false;
+    }
     
     // Update UI with user info
     const userInfo = document.getElementById('userInfo');

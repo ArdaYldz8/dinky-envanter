@@ -13,7 +13,9 @@
       "mcp__supabase__list_tables",
       "Bash(rm:*)",
       "Bash(git push:*)",
-      "Bash(Start-Process \"http://localhost:8080\")"
+      "Bash(Start-Process \"http://localhost:8080\")",
+      "Bash(npm install:*)",
+      "Bash(netlify:*)"
     ],
     "deny": [],
     "ask": []
