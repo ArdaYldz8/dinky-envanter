@@ -5,6 +5,8 @@ import { Toast } from '../utils/toast.js';
 import { Modal } from '../components/Modal.js';
 
 let currentCustomers = [];
+let selectedCustomer = null;
+let currentTransactions = [];
 
 export async function loadCustomers() {
     const content = document.getElementById('mainContent');
@@ -16,6 +18,9 @@ export async function loadCustomers() {
             <div class="page-actions">
                 <button class="btn btn-primary" onclick="window.openCustomerModal()">
                     <i class="fas fa-plus"></i> Yeni Cari Hesap
+                </button>
+                <button class="btn btn-info" onclick="window.showAgingReport()">
+                    <i class="fas fa-chart-bar"></i> Yaşlandırma Raporu
                 </button>
             </div>
         </div>
@@ -35,13 +40,14 @@ export async function loadCustomers() {
                             <th>Telefon</th>
                             <th>Şehir</th>
                             <th>Tip</th>
+                            <th>Bakiye</th>
                             <th>Durum</th>
                             <th>İşlemler</th>
                         </tr>
                     </thead>
                     <tbody id="customersTableBody">
                         <tr>
-                            <td colspan="8" class="text-center">Yükleniyor...</td>
+                            <td colspan="9" class="text-center">Yükleniyor...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -68,7 +74,16 @@ async function loadCustomersData() {
         const { data: customers, error } = await customerService.getAll();
         if (error) throw error;
 
-        currentCustomers = customers || [];
+        // Load balances for each customer
+        const customersWithBalances = await Promise.all(customers.map(async (customer) => {
+            const { data: balanceData } = await customerService.getCustomerBalance(customer.id);
+            return {
+                ...customer,
+                balance: balanceData ? balanceData.balance : 0
+            };
+        }));
+
+        currentCustomers = customersWithBalances || [];
         renderCustomersTable(currentCustomers);
 
     } catch (error) {
@@ -83,7 +98,7 @@ function renderCustomersTable(customers) {
     if (!customers || customers.length === 0) {
         tableBody.innerHTML = `
             <tr>
-                <td colspan="8" class="text-center text-muted">
+                <td colspan="9" class="text-center text-muted">
                     <i class="fas fa-users"></i><br>
                     Henüz cari hesap kaydı bulunmuyor.
                 </td>
@@ -110,14 +125,23 @@ function renderCustomersTable(customers) {
                 </span>
             </td>
             <td>
+                <span class="badge badge-${customer.balance > 0 ? 'success' : customer.balance < 0 ? 'danger' : 'secondary'}">
+                    ${formatter.currency(Math.abs(customer.balance || 0))}
+                    ${customer.balance > 0 ? ' (A)' : customer.balance < 0 ? ' (B)' : ''}
+                </span>
+            </td>
+            <td>
                 <span class="badge badge-${customer.is_active ? 'success' : 'secondary'}">
                     ${customer.is_active ? 'Aktif' : 'Pasif'}
                 </span>
             </td>
             <td>
                 <div class="btn-group">
-                    <button class="btn btn-sm btn-info" onclick="window.viewCustomer('${customer.id}')" title="Görüntüle">
+                    <button class="btn btn-sm btn-info" onclick="window.viewCustomerDetails('${customer.id}')" title="Detaylar">
                         <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-sm btn-primary" onclick="window.openTransactionsModal('${customer.id}')" title="Cari Hareketler">
+                        <i class="fas fa-list"></i>
                     </button>
                     <button class="btn btn-sm btn-warning" onclick="window.editCustomer('${customer.id}')" title="Düzenle">
                         <i class="fas fa-edit"></i>
@@ -332,7 +356,414 @@ window.openCustomerModal = function(customer = null) {
     });
 };
 
-window.viewCustomer = function(customerId) {
+// Open transactions modal for a customer
+window.openTransactionsModal = async function(customerId) {
+    selectedCustomer = currentCustomers.find(c => c.id === customerId);
+    if (!selectedCustomer) return;
+
+    const modal = new Modal({
+        title: `${selectedCustomer.company_name} - Cari Hareketler`,
+        size: 'x-large',
+        content: `
+            <div class="transactions-container">
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <div class="info-box">
+                            <small>Güncel Bakiye</small>
+                            <h4 class="${selectedCustomer.balance >= 0 ? 'text-success' : 'text-danger'}">
+                                ${formatter.currency(Math.abs(selectedCustomer.balance || 0))}
+                                ${selectedCustomer.balance > 0 ? ' (Alacak)' : selectedCustomer.balance < 0 ? ' (Borç)' : ''}
+                            </h4>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="info-box">
+                            <small>Kredi Limiti</small>
+                            <h4>${formatter.currency(selectedCustomer.credit_limit || 0)}</h4>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="info-box">
+                            <small>Vade</small>
+                            <h4>${selectedCustomer.payment_term_days || 0} gün</h4>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <button class="btn btn-primary btn-block" onclick="window.addTransactionModal('${customerId}')">
+                            <i class="fas fa-plus"></i> Yeni Hareket
+                        </button>
+                        <button class="btn btn-info btn-block mt-2" onclick="window.printStatement('${customerId}')">
+                            <i class="fas fa-print"></i> Ekstre Yazdır
+                        </button>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Tarih</th>
+                                <th>İşlem Tipi</th>
+                                <th>Açıklama</th>
+                                <th>Belge No</th>
+                                <th>Borç</th>
+                                <th>Alacak</th>
+                                <th>Bakiye</th>
+                                <th>İşlemler</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transactionsTableBody">
+                            <tr>
+                                <td colspan="8" class="text-center">Yükleniyor...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `
+    });
+
+    modal.show();
+
+    // Load transactions
+    await loadTransactions(customerId);
+};
+
+// Load customer transactions
+async function loadTransactions(customerId) {
+    try {
+        const { data: transactions, error } = await customerService.getCustomerTransactions(customerId);
+        if (error) throw error;
+
+        currentTransactions = transactions || [];
+        renderTransactionsTable(currentTransactions);
+
+    } catch (error) {
+        console.error('Transactions loading error:', error);
+        Toast.error('Hareketler yüklenirken hata oluştu');
+    }
+}
+
+// Render transactions table
+function renderTransactionsTable(transactions) {
+    const tableBody = document.getElementById('transactionsTableBody');
+
+    if (!transactions || transactions.length === 0) {
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="8" class="text-center text-muted">
+                    Henüz hareket kaydı bulunmuyor.
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    let runningBalance = 0;
+    tableBody.innerHTML = transactions.map(transaction => {
+        const debit = transaction.transaction_type === 'Borç' || transaction.transaction_type === 'Alış' ? transaction.amount : 0;
+        const credit = transaction.transaction_type === 'Alacak' || transaction.transaction_type === 'Satış' || transaction.transaction_type === 'Tahsilat' ? transaction.amount : 0;
+        runningBalance += (credit - debit);
+
+        return `
+            <tr>
+                <td>${formatter.date(transaction.transaction_date)}</td>
+                <td>
+                    <span class="badge badge-${getTransactionTypeBadge(transaction.transaction_type)}">
+                        ${transaction.transaction_type}
+                    </span>
+                </td>
+                <td>${transaction.description || '-'}</td>
+                <td>${transaction.document_number || '-'}</td>
+                <td class="text-danger">${debit > 0 ? formatter.currency(debit) : '-'}</td>
+                <td class="text-success">${credit > 0 ? formatter.currency(credit) : '-'}</td>
+                <td class="${runningBalance >= 0 ? 'text-success' : 'text-danger'}">
+                    ${formatter.currency(Math.abs(runningBalance))}
+                </td>
+                <td>
+                    <button class="btn btn-sm btn-danger" onclick="window.deleteTransaction('${transaction.id}', '${transaction.customer_id}')" title="Sil">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+// Get transaction type badge
+function getTransactionTypeBadge(type) {
+    const badges = {
+        'Satış': 'success',
+        'Alış': 'danger',
+        'Tahsilat': 'info',
+        'Ödeme': 'warning',
+        'Borç': 'danger',
+        'Alacak': 'success'
+    };
+    return badges[type] || 'secondary';
+}
+
+// Add transaction modal
+window.addTransactionModal = function(customerId) {
+    const modal = new Modal({
+        title: 'Yeni Cari Hareket',
+        size: 'medium',
+        content: `
+            <form id="transactionForm">
+                <div class="form-group">
+                    <label>İşlem Tipi *</label>
+                    <select id="transaction_type" class="form-control" required>
+                        <option value="">Seçiniz...</option>
+                        <option value="Satış">Satış</option>
+                        <option value="Alış">Alış</option>
+                        <option value="Tahsilat">Tahsilat</option>
+                        <option value="Ödeme">Ödeme</option>
+                        <option value="Borç">Borç Dekontu</option>
+                        <option value="Alacak">Alacak Dekontu</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Tarih *</label>
+                    <input type="date" id="transaction_date" class="form-control"
+                           value="${new Date().toISOString().split('T')[0]}" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Tutar (TL) *</label>
+                    <input type="number" id="amount" class="form-control"
+                           min="0.01" step="0.01" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Belge No</label>
+                    <input type="text" id="document_number" class="form-control">
+                </div>
+
+                <div class="form-group">
+                    <label>Açıklama</label>
+                    <textarea id="description" class="form-control" rows="2"></textarea>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="this.closest('.modal').querySelector('.modal-close').click()">İptal</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Kaydet
+                    </button>
+                </div>
+            </form>
+        `
+    });
+
+    modal.show();
+
+    // Form submit handler
+    document.getElementById('transactionForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const formData = {
+            customer_id: customerId,
+            transaction_type: document.getElementById('transaction_type').value,
+            transaction_date: document.getElementById('transaction_date').value,
+            amount: parseFloat(document.getElementById('amount').value),
+            document_number: document.getElementById('document_number').value.trim() || null,
+            description: document.getElementById('description').value.trim() || null
+        };
+
+        try {
+            const { error } = await customerService.addTransaction(formData);
+            if (error) throw error;
+
+            Toast.success('Hareket kaydedildi');
+            modal.close();
+            await loadTransactions(customerId);
+            await loadCustomersData(); // Refresh balances
+
+        } catch (error) {
+            console.error('Transaction save error:', error);
+            Toast.error('Hareket kaydedilirken hata oluştu');
+        }
+    });
+};
+
+// Delete transaction
+window.deleteTransaction = async function(transactionId, customerId) {
+    const confirmed = await Modal.confirm(
+        'Bu hareketi silmek istediğinizden emin misiniz?',
+        'Hareket Silme'
+    );
+
+    if (confirmed) {
+        try {
+            const { error } = await customerService.deleteTransaction(transactionId);
+            if (error) throw error;
+
+            Toast.success('Hareket silindi');
+            await loadTransactions(customerId);
+            await loadCustomersData(); // Refresh balances
+
+        } catch (error) {
+            console.error('Transaction delete error:', error);
+            Toast.error('Hareket silinirken hata oluştu');
+        }
+    }
+};
+
+// Print customer statement
+window.printStatement = async function(customerId) {
+    const customer = currentCustomers.find(c => c.id === customerId);
+    if (!customer) return;
+
+    try {
+        const endDate = new Date().toISOString().split('T')[0];
+        const startDate = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]; // Last 90 days
+
+        const { data: statement, error } = await customerService.getCustomerStatement(customerId, startDate, endDate);
+        if (error) throw error;
+
+        // Create print window
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(`
+            <html>
+                <head>
+                    <title>Cari Ekstre - ${customer.company_name}</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; }
+                        .header { text-align: center; margin-bottom: 30px; }
+                        .info { margin-bottom: 20px; }
+                        table { width: 100%; border-collapse: collapse; }
+                        th, td { padding: 8px; border: 1px solid #ddd; }
+                        th { background: #f5f5f5; }
+                        .text-right { text-align: right; }
+                        .text-center { text-align: center; }
+                        @media print { .no-print { display: none; } }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <h2>CARİ HESAP EKSTRESİ</h2>
+                        <p>${startDate} - ${endDate}</p>
+                    </div>
+                    <div class="info">
+                        <strong>Firma:</strong> ${customer.company_name}<br>
+                        <strong>Kod:</strong> ${customer.customer_code}<br>
+                        <strong>Telefon:</strong> ${customer.phone || '-'}<br>
+                        <strong>Vergi No:</strong> ${customer.tax_number || '-'}
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Tarih</th>
+                                <th>İşlem</th>
+                                <th>Belge No</th>
+                                <th>Açıklama</th>
+                                <th>Borç</th>
+                                <th>Alacak</th>
+                                <th>Bakiye</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${generateStatementRows(statement)}
+                        </tbody>
+                    </table>
+                    <script>window.print();</script>
+                </body>
+            </html>
+        `);
+
+    } catch (error) {
+        console.error('Statement print error:', error);
+        Toast.error('Ekstre hazırlanırken hata oluştu');
+    }
+};
+
+// Generate statement rows for printing
+function generateStatementRows(transactions) {
+    if (!transactions || transactions.length === 0) {
+        return '<tr><td colspan="7" class="text-center">Hareket bulunmamaktadır.</td></tr>';
+    }
+
+    let runningBalance = 0;
+    return transactions.map(t => {
+        const debit = t.transaction_type === 'Borç' || t.transaction_type === 'Alış' || t.transaction_type === 'Ödeme' ? t.amount : 0;
+        const credit = t.transaction_type === 'Alacak' || t.transaction_type === 'Satış' || t.transaction_type === 'Tahsilat' ? t.amount : 0;
+        runningBalance += (credit - debit);
+
+        return `
+            <tr>
+                <td>${formatter.date(t.transaction_date)}</td>
+                <td>${t.transaction_type}</td>
+                <td>${t.document_number || '-'}</td>
+                <td>${t.description || '-'}</td>
+                <td class="text-right">${debit > 0 ? formatter.currency(debit) : '-'}</td>
+                <td class="text-right">${credit > 0 ? formatter.currency(credit) : '-'}</td>
+                <td class="text-right">${formatter.currency(Math.abs(runningBalance))}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+// Show aging report
+window.showAgingReport = async function() {
+    try {
+        const { data: agingData, error } = await customerService.getAgingReport();
+        if (error) throw error;
+
+        const modal = new Modal({
+            title: 'Yaşlandırma Raporu',
+            size: 'large',
+            content: `
+                <div class="aging-report">
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Müşteri</th>
+                                    <th>Güncel</th>
+                                    <th>1-30 Gün</th>
+                                    <th>31-60 Gün</th>
+                                    <th>61-90 Gün</th>
+                                    <th>90+ Gün</th>
+                                    <th>Toplam</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${generateAgingRows(agingData)}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `
+        });
+
+        modal.show();
+
+    } catch (error) {
+        console.error('Aging report error:', error);
+        Toast.error('Yaşlandırma raporu hazırlanırken hata oluştu');
+    }
+};
+
+// Generate aging report rows
+function generateAgingRows(data) {
+    if (!data || data.length === 0) {
+        return '<tr><td colspan="7" class="text-center">Veri bulunmamaktadır.</td></tr>';
+    }
+
+    return data.map(row => `
+        <tr>
+            <td>${row.company_name}</td>
+            <td>${formatter.currency(row.current || 0)}</td>
+            <td>${formatter.currency(row.days_30 || 0)}</td>
+            <td>${formatter.currency(row.days_60 || 0)}</td>
+            <td>${formatter.currency(row.days_90 || 0)}</td>
+            <td>${formatter.currency(row.days_over_90 || 0)}</td>
+            <td><strong>${formatter.currency(row.total || 0)}</strong></td>
+        </tr>
+    `).join('');
+}
+
+window.viewCustomerDetails = function(customerId) {
     const customer = currentCustomers.find(c => c.id === customerId);
     if (!customer) return;
 
@@ -371,6 +802,12 @@ window.viewCustomer = function(customerId) {
                             <tr><td><strong>Vergi Dairesi:</strong></td><td>${customer.tax_office || '-'}</td></tr>
                             <tr><td><strong>Kredi Limiti:</strong></td><td>${formatter.currency(customer.credit_limit || 0)}</td></tr>
                             <tr><td><strong>Vade:</strong></td><td>${customer.payment_term_days || 0} gün</td></tr>
+                            <tr><td><strong>Güncel Bakiye:</strong></td>
+                                <td class="${customer.balance >= 0 ? 'text-success' : 'text-danger'}">
+                                    ${formatter.currency(Math.abs(customer.balance || 0))}
+                                    ${customer.balance > 0 ? ' (A)' : customer.balance < 0 ? ' (B)' : ''}
+                                </td>
+                            </tr>
                         </table>
                     </div>
                     <div class="col-md-6">
@@ -381,6 +818,16 @@ window.viewCustomer = function(customerId) {
                             <tr><td><strong>Notlar:</strong></td><td>${customer.notes || '-'}</td></tr>
                         </table>
                     </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn btn-primary" onclick="window.openTransactionsModal('${customer.id}')">
+                        <i class="fas fa-list"></i> Cari Hareketler
+                    </button>
+                    <button class="btn btn-warning" onclick="window.editCustomer('${customer.id}')">
+                        <i class="fas fa-edit"></i> Düzenle
+                    </button>
+                    <button type="button" class="btn btn-secondary" onclick="this.closest('.modal').querySelector('.modal-close').click()">Kapat</button>
                 </div>
             </div>
         `

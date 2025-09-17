@@ -1395,6 +1395,210 @@ export const customerService = {
             .order('company_name')
             .limit(10);
         return { data, error };
+    },
+
+    // Get customer balance and transactions
+    async getCustomerBalance(customerId) {
+        try {
+            // Try to use the RPC function first
+            const { data, error } = await supabase.rpc('get_customer_balance', {
+                p_customer_id: customerId
+            });
+
+            if (!error) {
+                return { data, error };
+            }
+        } catch (rpcError) {
+            console.warn('RPC function not available, calculating balance manually');
+        }
+
+        // Fallback: Calculate balance manually
+        try {
+            const { data: transactions, error } = await supabase
+                .from('customer_transactions')
+                .select('transaction_type, amount')
+                .eq('customer_id', customerId);
+
+            if (error) return { data: null, error };
+
+            const balance = transactions?.reduce((total, t) => {
+                if (t.transaction_type === 'Satış' || t.transaction_type === 'Alacak' || t.transaction_type === 'Tahsilat') {
+                    return total + t.amount;
+                } else if (t.transaction_type === 'Alış' || t.transaction_type === 'Borç' || t.transaction_type === 'Ödeme') {
+                    return total - t.amount;
+                }
+                return total;
+            }, 0) || 0;
+
+            return { data: { balance }, error: null };
+        } catch (fallbackError) {
+            return { data: { balance: 0 }, error: fallbackError };
+        }
+    },
+
+    // Get customer transactions
+    async getCustomerTransactions(customerId, startDate = null, endDate = null) {
+        let query = supabase
+            .from('customer_transactions')
+            .select('*')
+            .eq('customer_id', customerId)
+            .order('transaction_date', { ascending: false });
+
+        if (startDate) {
+            query = query.gte('transaction_date', startDate);
+        }
+        if (endDate) {
+            query = query.lte('transaction_date', endDate);
+        }
+
+        const { data, error } = await query;
+        return { data, error };
+    },
+
+    // Add customer transaction (payment, sale, purchase etc.)
+    async addTransaction(transaction) {
+        const { data, error } = await supabase
+            .from('customer_transactions')
+            .insert([transaction])
+            .select()
+            .single();
+
+        // Activity logging
+        if (!error && data) {
+            try {
+                const userInfo = this.getCurrentUserInfo();
+                await supabase.rpc('log_user_activity', {
+                    p_action_type: 'CREATE',
+                    p_table_name: 'customer_transactions',
+                    p_record_id: data.id,
+                    p_description: `Cari hareket eklendi: ${data.transaction_type} - ${data.amount} TL`,
+                    p_new_values: data,
+                    p_user_id: userInfo.id,
+                    p_user_name: userInfo.name,
+                    p_user_role: userInfo.role
+                });
+            } catch (logError) {
+                console.warn('Transaction activity logging failed:', logError);
+            }
+        }
+
+        return { data, error };
+    },
+
+    // Delete customer transaction
+    async deleteTransaction(transactionId) {
+        const { data: oldData } = await supabase
+            .from('customer_transactions')
+            .select()
+            .eq('id', transactionId)
+            .single();
+
+        const { error } = await supabase
+            .from('customer_transactions')
+            .delete()
+            .eq('id', transactionId);
+
+        // Activity logging
+        if (!error && oldData) {
+            try {
+                const userInfo = this.getCurrentUserInfo();
+                await supabase.rpc('log_user_activity', {
+                    p_action_type: 'DELETE',
+                    p_table_name: 'customer_transactions',
+                    p_record_id: oldData.id,
+                    p_description: `Cari hareket silindi: ${oldData.transaction_type} - ${oldData.amount} TL`,
+                    p_old_values: oldData,
+                    p_user_id: userInfo.id,
+                    p_user_name: userInfo.name,
+                    p_user_role: userInfo.role
+                });
+            } catch (logError) {
+                console.warn('Transaction delete activity logging failed:', logError);
+            }
+        }
+
+        return { error };
+    },
+
+    // Get customer statement
+    async getCustomerStatement(customerId, startDate, endDate) {
+        const { data, error } = await supabase.rpc('get_customer_statement', {
+            p_customer_id: customerId,
+            p_start_date: startDate,
+            p_end_date: endDate
+        });
+        return { data, error };
+    },
+
+    // Get aging report
+    async getAgingReport(customerId = null) {
+        try {
+            // Try to use the RPC function first
+            const { data, error } = await supabase.rpc('get_aging_report', {
+                p_customer_id: customerId
+            });
+
+            if (!error) {
+                return { data, error };
+            }
+        } catch (rpcError) {
+            console.warn('RPC function not available, using simplified aging report');
+        }
+
+        // Fallback: Simplified aging report
+        try {
+            let customerQuery = supabase
+                .from('customers')
+                .select('id, company_name, customer_code');
+
+            if (customerId) {
+                customerQuery = customerQuery.eq('id', customerId);
+            }
+
+            const { data: customers, error: customersError } = await customerQuery;
+            if (customersError) return { data: null, error: customersError };
+
+            const agingData = await Promise.all(customers.map(async (customer) => {
+                const { data: transactions } = await supabase
+                    .from('customer_transactions')
+                    .select('transaction_type, amount, transaction_date')
+                    .eq('customer_id', customer.id)
+                    .in('transaction_type', ['Satış', 'Alış', 'Borç', 'Alacak']);
+
+                let current = 0, days30 = 0, days60 = 0, days90 = 0, daysOver90 = 0;
+
+                transactions?.forEach(t => {
+                    const daysOld = Math.floor((new Date() - new Date(t.transaction_date)) / (1000 * 60 * 60 * 24));
+                    const amount = (t.transaction_type === 'Satış' || t.transaction_type === 'Alacak') ? t.amount : -t.amount;
+
+                    if (daysOld <= 0) current += amount;
+                    else if (daysOld <= 30) days30 += amount;
+                    else if (daysOld <= 60) days60 += amount;
+                    else if (daysOld <= 90) days90 += amount;
+                    else daysOver90 += amount;
+                });
+
+                const total = current + days30 + days60 + days90 + daysOver90;
+
+                return {
+                    customer_id: customer.id,
+                    company_name: customer.company_name,
+                    current: current,
+                    days_30: days30,
+                    days_60: days60,
+                    days_90: days90,
+                    days_over_90: daysOver90,
+                    total: total
+                };
+            }));
+
+            // Filter out customers with zero balance
+            const filteredData = agingData.filter(item => item.total !== 0);
+
+            return { data: filteredData, error: null };
+        } catch (fallbackError) {
+            return { data: [], error: fallbackError };
+        }
     }
 };
 

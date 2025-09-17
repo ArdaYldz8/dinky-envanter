@@ -11,7 +11,9 @@
       "WebFetch(domain:www.geeksforgeeks.org)",
       "mcp__supabase__list_projects",
       "mcp__supabase__list_tables",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(git push:*)",
+      "Bash(Start-Process \"http://localhost:8080\")"
     ],
     "deny": [],
     "ask": []
