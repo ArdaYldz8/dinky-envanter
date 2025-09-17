@@ -57,6 +57,22 @@ function checkAuth() {
             window.location.href = 'login.html';
             return false;
         }
+
+        // Check session timeout (8 hours)
+        const SESSION_TIMEOUT = 8 * 60 * 60 * 1000; // 8 hours in milliseconds
+        const now = new Date();
+        const sessionAge = now - loginTime;
+
+        if (sessionAge > SESSION_TIMEOUT) {
+            localStorage.removeItem('dinky_user');
+            alert('Oturumunuzun süresi doldu. Lütfen tekrar giriş yapın.');
+            window.location.href = 'login.html';
+            return false;
+        }
+
+        // Update last activity time
+        currentUser.lastActivity = now.toISOString();
+        localStorage.setItem('dinky_user', JSON.stringify(currentUser));
     } catch (e) {
         // Invalid session data
         localStorage.removeItem('dinky_user');

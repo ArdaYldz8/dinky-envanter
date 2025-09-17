@@ -17,7 +17,8 @@
       "Bash(npm install:*)",
       "Bash(netlify:*)",
       "Bash(Start-Process \"http://localhost:8080/hash_generator.html\")",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "mcp__supabase__apply_migration"
     ],
     "deny": [],
     "ask": []
