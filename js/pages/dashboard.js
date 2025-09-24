@@ -339,13 +339,40 @@ async function renderProjectDensityChart() {
             return attDate >= thirtyDaysAgo;
         });
 
-        // Calculate unique personnel count per project (last 30 days)
+        // Fetch employee data for names
+        const employeesResult = await employeeService.getAll();
+        const employees = employeesResult.data || [];
+        const employeeMap = {};
+        employees.forEach(emp => {
+            employeeMap[emp.id] = emp.full_name;
+        });
+
+        // Calculate unique personnel count per project with details
         const projectPersonnelCount = {};
+        const projectPersonnelDetails = {};
 
         projects.forEach(project => {
             const projectAttendance = recentAttendance.filter(att => att.project_id === project.id);
-            const uniqueEmployees = [...new Set(projectAttendance.map(att => att.employee_id))];
+
+            // Count days per employee
+            const employeeDays = {};
+            projectAttendance.forEach(att => {
+                if (!employeeDays[att.employee_id]) {
+                    employeeDays[att.employee_id] = 0;
+                }
+                employeeDays[att.employee_id]++;
+            });
+
+            const uniqueEmployees = Object.keys(employeeDays);
             projectPersonnelCount[project.project_name] = uniqueEmployees.length;
+
+            // Store details for tooltip
+            projectPersonnelDetails[project.project_name] = Object.entries(employeeDays)
+                .map(([empId, days]) => ({
+                    name: employeeMap[empId] || 'Bilinmeyen',
+                    days: days
+                }))
+                .sort((a, b) => b.days - a.days); // Sort by days descending
         });
 
         // Prepare chart data
@@ -379,7 +406,36 @@ async function renderProjectDensityChart() {
             grid: { borderColor: '#e9ecef' },
             tooltip: {
                 theme: 'light',
-                y: { formatter: (val) => val + ' personel' }
+                custom: function({ series, seriesIndex, dataPointIndex, w }) {
+                    const projectName = w.globals.labels[dataPointIndex];
+                    const count = series[seriesIndex][dataPointIndex];
+                    const details = projectPersonnelDetails[projectName] || [];
+
+                    let tooltipHTML = `
+                        <div style="padding: 10px; min-width: 200px;">
+                            <div style="font-weight: 600; margin-bottom: 8px; color: #007bff;">
+                                ${projectName}
+                            </div>
+                            <div style="font-size: 13px; margin-bottom: 8px;">
+                                Toplam: ${count} personel
+                            </div>
+                    `;
+
+                    if (details.length > 0) {
+                        tooltipHTML += '<div style="border-top: 1px solid #e9ecef; padding-top: 8px; max-height: 200px; overflow-y: auto;">';
+                        details.forEach((emp, idx) => {
+                            tooltipHTML += `
+                                <div style="font-size: 12px; padding: 3px 0; color: #666;">
+                                    ${idx + 1}. ${emp.name} <span style="color: #007bff;">(${emp.days} gün)</span>
+                                </div>
+                            `;
+                        });
+                        tooltipHTML += '</div>';
+                    }
+
+                    tooltipHTML += '</div>';
+                    return tooltipHTML;
+                }
             }
         };
 
