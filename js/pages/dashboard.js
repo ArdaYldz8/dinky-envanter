@@ -67,7 +67,7 @@ export async function loadDashboard() {
                     <!-- Project Chart Container -->
                     <div id="project-chart-container" class="sidebar-widget">
                         <div class="sidebar-widget__header">
-                            <h3><i class="fas fa-chart-bar"></i> Proje Bazlı Personel Yoğunluğu</h3>
+                            <h3><i class="fas fa-chart-bar"></i> Proje Bazlı Personel (Son 30 Gün)</h3>
                         </div>
                         <div class="sidebar-widget__body">
                             <div class="chart-loading">
@@ -330,11 +330,20 @@ async function renderProjectDensityChart() {
         const projects = projectsResult.data || [];
         const attendance = attendanceResult.data || [];
 
-        // Calculate personnel count per project
+        // Filter attendance to last 30 days
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+        const recentAttendance = attendance.filter(att => {
+            const attDate = new Date(att.work_date);
+            return attDate >= thirtyDaysAgo;
+        });
+
+        // Calculate unique personnel count per project (last 30 days)
         const projectPersonnelCount = {};
-        
+
         projects.forEach(project => {
-            const projectAttendance = attendance.filter(att => att.project_id === project.id);
+            const projectAttendance = recentAttendance.filter(att => att.project_id === project.id);
             const uniqueEmployees = [...new Set(projectAttendance.map(att => att.employee_id))];
             projectPersonnelCount[project.project_name] = uniqueEmployees.length;
         });
