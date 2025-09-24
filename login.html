@@ -302,7 +302,7 @@
             localStorage.setItem('login_attempts', JSON.stringify(loginAttempts));
         }
 
-        // Login form handler
+        // Login form handler - PRODUCTION: Real Supabase Auth
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
@@ -333,74 +333,50 @@
                 // Check rate limit
                 checkRateLimit(email);
 
-                // Hash function for password security
-                async function hashPassword(password) {
-                    const encoder = new TextEncoder();
-                    const data = encoder.encode(password + 'dinky_salt_2025');
-                    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-                    const hashArray = Array.from(new Uint8Array(hashBuffer));
-                    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+                // PRODUCTION: Use real Supabase Authentication
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email: email,
+                    password: password
+                });
+
+                if (error) {
+                    recordLoginAttempt(email, false);
+                    throw new Error(error.message === 'Invalid login credentials' ?
+                        'E-posta veya şifre hatalı' : error.message);
                 }
 
-                // Secure user database with hashed passwords
-                const demoUsers = {
-                    'admin@dinky.com': {
-                        passwordHash: '128220a43250ef5d7a43bfbb18c7eab27204b6f19bb78437c157ea0ac0e44e7b',
-                        name: 'Admin Kullanıcı',
-                        role: 'admin',
-                        id: '00000000-0000-0000-0000-000000000001'
-                    },
-                    'yonetim@dinky.com': {
-                        passwordHash: '618d9b8d5fe707430eea13bece957cbf028f0d4392ad1217234a848a3ec3783f',
-                        name: 'Yönetim',
-                        role: 'admin',
-                        id: '00000000-0000-0000-0000-000000000002'
-                    },
-                    'depo@dinky.com': {
-                        passwordHash: '751734251e6b67367e47d69f13d9934fa803f06a49616eed29af4ec008e380f8',
-                        name: 'Depo Sorumlusu',
-                        role: 'warehouse',
-                        id: '00000000-0000-0000-0000-000000000003'
-                    },
-                    'muhasebe@dinky.com': {
-                        passwordHash: 'c0f555cdfd3814ab0a8fef20fe8cd81a4cca62915cc18dad5da675bd8f7166d0',
-                        name: 'Muhasebe Personeli',
-                        role: 'accounting',
-                        id: '00000000-0000-0000-0000-000000000004'
-                    }
-                };
+                if (data.user && data.session) {
+                    // Decode JWT to get user_role claim
+                    const jwt = data.session.access_token;
+                    const payload = JSON.parse(atob(jwt.split('.')[1]));
+                    const userRole = payload.user_role;
 
-                const user = demoUsers[email];
-                if (user) {
-                    const inputPasswordHash = await hashPassword(password);
-                    if (inputPasswordHash === user.passwordHash) {
-                    // Store user session
+                    if (!userRole || userRole === 'null') {
+                        await supabase.auth.signOut();
+                        throw new Error('Kullanıcı rolü bulunamadı. Lütfen yöneticiyle iletişime geçin.');
+                    }
+
+                    // Store session data in localStorage (for backward compatibility)
                     const userData = {
-                        id: user.id,
-                        name: user.name,
-                        email: email,
-                        role: user.role,
+                        id: data.user.id,
+                        email: data.user.email,
+                        role: userRole,
                         loginTime: new Date().toISOString()
                     };
-                    
-                        localStorage.setItem('dinky_user', JSON.stringify(userData));
-                        recordLoginAttempt(email, true); // Record successful login
 
-                        // Redirect to main app
-                        window.location.href = 'index.html';
-                    } else {
-                        recordLoginAttempt(email, false); // Record failed attempt
-                        throw new Error('E-posta veya şifre hatalı');
-                    }
+                    localStorage.setItem('dinky_user', JSON.stringify(userData));
+                    recordLoginAttempt(email, true);
+
+                    // Redirect to main app
+                    window.location.href = 'index.html';
                 } else {
-                    recordLoginAttempt(email, false); // Record failed attempt
-                    throw new Error('E-posta veya şifre hatalı');
+                    throw new Error('Oturum oluşturulamadı');
                 }
 
             } catch (error) {
                 console.error('Login error:', error);
                 if (!error.message.includes('Çok fazla hatalı giriş')) {
-                    recordLoginAttempt(email, false); // Record failed attempt (if not rate limit error)
+                    recordLoginAttempt(email, false);
                 }
                 errorDiv.textContent = error.message || 'Giriş yapılırken bir hata oluştu';
                 errorDiv.classList.add('show');
@@ -426,27 +402,13 @@
             }
         });
 
-        // Check if already logged in and validate session
-        const currentUser = localStorage.getItem('dinky_user');
-        if (currentUser) {
-            try {
-                const userData = JSON.parse(currentUser);
-                // Check if login time is before password update (17.09.2025)
-                const loginTime = new Date(userData.loginTime);
-                const passwordUpdateTime = new Date('2025-09-17T20:00:00'); // Password update time
-
-                if (loginTime < passwordUpdateTime) {
-                    // Force logout for old sessions
-                    localStorage.removeItem('dinky_user');
-                    alert('Güvenlik güncellemesi nedeniyle oturumunuz sonlandırıldı. Lütfen yeni şifrenizle tekrar giriş yapın.');
-                } else {
-                    window.location.href = 'index.html';
-                }
-            } catch (e) {
-                // Invalid session data, clear it
-                localStorage.removeItem('dinky_user');
+        // Check if already logged in (check Supabase session)
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            if (session) {
+                // User has active Supabase session, redirect to app
+                window.location.href = 'index.html';
             }
-        }
+        });
     </script>
 </body>
 </html>

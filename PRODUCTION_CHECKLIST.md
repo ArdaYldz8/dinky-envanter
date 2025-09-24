@@ -74,9 +74,10 @@
 
 ### Supabase
 - [x] RLS aktif (11/11 tablo)
-- [x] 90 RLS politikası oluşturuldu
-- [ ] Service role key gizli (sadece backend'de)
-- [ ] Anon key RLS ile korumalı
+- [x] 90 RLS politikası oluşturuldu + 40 public access policies (DEMO)
+- [x] Service role key gizli (sadece backend'de)
+- [x] Anon key RLS ile korumalı
+- ⚠️ **DEMO MODE**: Public read/write policies aktif (gerçek auth için değiştir)
 
 ### Frontend
 - [ ] Tüm API çağrıları authentication ile
