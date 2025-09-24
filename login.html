@@ -6,6 +6,7 @@
     <title>Dinky Metal ERP - Giriş</title>
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/validation.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         body {
@@ -217,7 +218,7 @@
     </div>
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js"></script>
-    <script>
+    <script type="module">
         // Supabase client configuration (dynamically constructed)
         function getSupabaseConfig() {
             const parts = {
@@ -303,6 +304,78 @@
             localStorage.setItem('login_attempts', JSON.stringify(loginAttempts));
         }
 
+        // Import security utilities
+        import { csrfManager } from './js/utils/security.js';
+
+        // Initialize CSRF token on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            csrfManager.getToken(); // Generate token if not exists
+        });
+
+        // Helper function to complete login after MFA
+        async function completeMFALogin(email, data) {
+            const loginBtn = document.getElementById('loginBtn');
+            const errorDiv = document.getElementById('errorMessage');
+
+            try {
+                // Refresh CSRF token
+                csrfManager.refreshToken();
+
+                // Fetch role from database
+                const { data: sessionData, error: sessionError } = await supabase
+                    .rpc('get_user_session_data');
+
+                if (sessionError) {
+                    console.error('Session data fetch error:', sessionError);
+
+                    // Fallback: Try to get role directly
+                    const { data: roleData, error: roleError } = await supabase
+                        .rpc('get_user_role_by_email', { user_email: email });
+
+                    if (roleError || !roleData) {
+                        await supabase.auth.signOut();
+                        throw new Error('Kullanıcı rolü alınamadı. Lütfen yöneticiyle iletişime geçin.');
+                    }
+
+                    const userData = {
+                        id: data.user.id,
+                        email: data.user.email,
+                        role: roleData,
+                        loginTime: new Date().toISOString()
+                    };
+
+                    localStorage.setItem('dinky_user', JSON.stringify(userData));
+                } else {
+                    console.log('📌 User session data:', sessionData);
+
+                    const userData = {
+                        id: sessionData.id || data.user.id,
+                        email: sessionData.email || data.user.email,
+                        role: sessionData.role,
+                        loginTime: new Date().toISOString()
+                    };
+
+                    if (!userData.role || userData.role === 'user') {
+                        console.warn('⚠️ Default role assigned. User may have limited access.');
+                    }
+
+                    localStorage.setItem('dinky_user', JSON.stringify(userData));
+                }
+
+                recordLoginAttempt(email, true);
+
+                // Redirect to main app
+                window.location.href = 'index.html';
+            } catch (error) {
+                console.error('Complete login error:', error);
+                errorDiv.textContent = error.message || 'Giriş tamamlanırken bir hata oluştu';
+                errorDiv.classList.add('show');
+
+                loginBtn.disabled = false;
+                loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Giriş Yap';
+            }
+        }
+
         // Login form handler - PRODUCTION: Real Supabase Auth
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -347,55 +420,36 @@
                 }
 
                 if (data.user && data.session) {
-                    console.log('✅ Authentication successful, fetching user role...');
+                    console.log('✅ Authentication successful, checking MFA status...');
 
-                    // Always fetch role from database (more reliable than JWT claims)
-                    const { data: sessionData, error: sessionError } = await supabase
-                        .rpc('get_user_session_data');
+                    // Check MFA requirement
+                    const aal = data.session.aal;
 
-                    if (sessionError) {
-                        console.error('Session data fetch error:', sessionError);
+                    if (aal === 'aal1') {
+                        // Check if user has MFA enrolled
+                        const { data: factors } = await supabase.auth.mfa.listFactors();
 
-                        // Fallback: Try to get role directly
-                        const { data: roleData, error: roleError } = await supabase
-                            .rpc('get_user_role_by_email', { user_email: email });
+                        if (factors && factors.totp && factors.totp.length > 0) {
+                            // User has MFA, show challenge
+                            import('./js/components/MFAChallengeModal.js').then(({ MFAChallengeModal }) => {
+                                const challengeModal = new MFAChallengeModal(
+                                    factors.totp[0],
+                                    async (verifiedData) => {
+                                        // MFA verified, continue with login
+                                        await completeMFALogin(email, data);
+                                    }
+                                );
+                                challengeModal.show();
 
-                        if (roleError || !roleData) {
-                            await supabase.auth.signOut();
-                            throw new Error('Kullanıcı rolü alınamadı. Lütfen yöneticiyle iletişime geçin.');
+                                loginBtn.disabled = false;
+                                loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Giriş Yap';
+                            });
+                            return; // Wait for MFA verification
                         }
-
-                        // Use fallback data
-                        const userData = {
-                            id: data.user.id,
-                            email: data.user.email,
-                            role: roleData,
-                            loginTime: new Date().toISOString()
-                        };
-
-                        localStorage.setItem('dinky_user', JSON.stringify(userData));
-                    } else {
-                        // Use session data from database
-                        console.log('📌 User session data:', sessionData);
-
-                        const userData = {
-                            id: sessionData.id || data.user.id,
-                            email: sessionData.email || data.user.email,
-                            role: sessionData.role,
-                            loginTime: new Date().toISOString()
-                        };
-
-                        if (!userData.role || userData.role === 'user') {
-                            console.warn('⚠️ Default role assigned. User may have limited access.');
-                        }
-
-                        localStorage.setItem('dinky_user', JSON.stringify(userData));
                     }
 
-                    recordLoginAttempt(email, true);
-
-                    // Redirect to main app
-                    window.location.href = 'index.html';
+                    // No MFA or AAL2 already achieved, continue login
+                    await completeMFALogin(email, data);
                 } else {
                     throw new Error('Oturum oluşturulamadı');
                 }

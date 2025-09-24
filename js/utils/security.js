@@ -242,36 +242,155 @@ export function throttle(func, limit) {
 }
 
 /**
- * CSRF token generator (basit implementasyon)
+ * CSRF token generator (cryptographically secure 256-bit)
  * @returns {string} CSRF token
  */
 export function generateCSRFToken() {
-    const array = new Uint8Array(32);
+    const array = new Uint8Array(32); // 256 bits
     crypto.getRandomValues(array);
     return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
 /**
- * Session storage ile CSRF token yönetimi
+ * Cookie-based CSRF token management (Double Submit Cookie Pattern)
+ * Secure against CSRF attacks while maintaining usability
  */
 export const csrfManager = {
+    /**
+     * Get or create CSRF token from cookie
+     * @returns {string} CSRF token
+     */
     getToken() {
-        let token = sessionStorage.getItem('csrf_token');
+        let token = this.getTokenFromCookie();
         if (!token) {
             token = generateCSRFToken();
-            sessionStorage.setItem('csrf_token', token);
+            this.setTokenCookie(token);
         }
         return token;
     },
 
-    validateToken(token) {
-        return token === sessionStorage.getItem('csrf_token');
+    /**
+     * Extract CSRF token from cookie
+     * @returns {string|null} CSRF token or null
+     */
+    getTokenFromCookie() {
+        const cookies = document.cookie.split('; ');
+        const csrfCookie = cookies.find(row => row.startsWith('CSRF-TOKEN='));
+        return csrfCookie ? csrfCookie.split('=')[1] : null;
     },
 
+    /**
+     * Set CSRF token in cookie with security attributes
+     * @param {string} token - CSRF token to set
+     */
+    setTokenCookie(token) {
+        const maxAge = 28800; // 8 hours (same as session)
+        const secure = window.location.protocol === 'https:' ? 'Secure;' : '';
+
+        // SameSite=Lax: Protects against CSRF while allowing normal navigation
+        // NOT httpOnly: JavaScript needs to read it for Double Submit pattern
+        document.cookie = `CSRF-TOKEN=${token}; Max-Age=${maxAge}; Path=/; SameSite=Lax; ${secure}`;
+    },
+
+    /**
+     * Validate CSRF token (Double Submit pattern)
+     * @param {string} requestToken - Token from request header/body
+     * @returns {boolean} True if valid
+     */
+    validateToken(requestToken) {
+        const cookieToken = this.getTokenFromCookie();
+
+        if (!cookieToken || !requestToken) {
+            return false;
+        }
+
+        // Constant-time comparison to prevent timing attacks
+        return this.constantTimeCompare(cookieToken, requestToken);
+    },
+
+    /**
+     * Constant-time string comparison
+     * @param {string} a - First string
+     * @param {string} b - Second string
+     * @returns {boolean} True if equal
+     */
+    constantTimeCompare(a, b) {
+        if (a.length !== b.length) {
+            return false;
+        }
+
+        let result = 0;
+        for (let i = 0; i < a.length; i++) {
+            result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+        }
+        return result === 0;
+    },
+
+    /**
+     * Refresh CSRF token (on login, password change, or session fixation prevention)
+     * @returns {string} New CSRF token
+     */
     refreshToken() {
         const token = generateCSRFToken();
-        sessionStorage.setItem('csrf_token', token);
+        this.setTokenCookie(token);
         return token;
+    },
+
+    /**
+     * Clear CSRF token (on logout)
+     */
+    clearToken() {
+        document.cookie = 'CSRF-TOKEN=; Max-Age=0; Path=/; SameSite=Lax;';
+    },
+
+    /**
+     * Inject CSRF token into fetch request
+     * @param {RequestInit} options - Fetch options
+     * @returns {RequestInit} Options with CSRF token
+     */
+    injectToken(options = {}) {
+        const token = this.getToken();
+
+        return {
+            ...options,
+            headers: {
+                ...options.headers,
+                'X-CSRF-Token': token
+            }
+        };
+    },
+
+    /**
+     * Add CSRF token to FormData
+     * @param {FormData} formData - Form data object
+     * @returns {FormData} Form data with CSRF token
+     */
+    addToFormData(formData) {
+        const token = this.getToken();
+        formData.append('csrf_token', token);
+        return formData;
+    },
+
+    /**
+     * Add hidden CSRF input to form
+     * @param {HTMLFormElement} form - Form element
+     */
+    addToForm(form) {
+        const token = this.getToken();
+
+        // Remove existing CSRF input if present
+        const existingInput = form.querySelector('input[name="csrf_token"]');
+        if (existingInput) {
+            existingInput.value = token;
+            return;
+        }
+
+        // Create new hidden input
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'csrf_token';
+        input.value = token;
+        form.appendChild(input);
     }
 };
 

@@ -27,7 +27,12 @@
       "Bash(git -C \"C:\\Users\\ardab\\OneDrive\\Masaüstü\\dinky-envanter\" status --short)",
       "Bash(git -C \"C:\\Users\\ardab\\OneDrive\\Masaüstü\\dinky-envanter\" add netlify.toml PRODUCTION_CHECKLIST.md .env.example package.json KULLANICI_BILGILERI.md login.html js/auth js/config js/utils/security.js js/utils/safeDOM.js js/pages/stock.js js/pages/personnel.js js/services/supabaseClient.js sql/01_enable_rls.sql sql/02_create_functions.sql sql/03_create_policies.sql sql/04_create_indexes.sql sql/05_grant_permissions.sql sql/RLS_SETUP_README.md)",
       "Bash(git -C \"C:\\Users\\ardab\\OneDrive\\Masaüstü\\dinky-envanter\" push origin main)",
-      "mcp__supabase__search_docs"
+      "mcp__supabase__search_docs",
+      "Bash(echo:*)",
+      "Bash(Start-Process \"http://localhost:8080/login.html\")",
+      "Bash(dir:*)",
+      "Bash(npm start)",
+      "Bash(powershell:*)"
     ],
     "deny": [],
     "ask": []

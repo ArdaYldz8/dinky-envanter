@@ -415,12 +415,11 @@ window.generateDailyReport = async function() {
         Toast.error('Lütfen tarih seçiniz');
         return;
     }
-    
+
     const reportContainer = document.getElementById('dailyReportContent');
     reportContainer.innerHTML = '<div class="loading">Rapor yükleniyor...</div>';
-    
+
     try {
-        // Fetch attendance data for selected date
         const { data: attendance, error } = await supabase
             .from('attendance_records')
             .select(`
@@ -428,90 +427,151 @@ window.generateDailyReport = async function() {
                 work_date,
                 status,
                 overtime_hours,
-                employee:employees(full_name, daily_wage),
+                employee:employees(id, full_name, daily_wage, department, monthly_salary),
                 project:projects(project_name)
             `)
             .eq('work_date', date)
-            .order('work_date');
-            
+            .order('employee(full_name)');
+
         if (error) throw error;
-        
+
         if (attendance && attendance.length > 0) {
             const totalPresent = attendance.filter(a => a.status === 'Tam Gün').length;
             const totalAbsent = attendance.filter(a => a.status === 'Gelmedi').length;
             const totalHalfDay = attendance.filter(a => a.status === 'Yarım Gün').length;
             const totalOvertime = attendance.reduce((sum, a) => sum + (a.overtime_hours || 0), 0);
-            
+
+            const totalDailyWage = attendance.reduce((sum, a) => {
+                if (a.status === 'Tam Gün') return sum + a.employee.daily_wage;
+                if (a.status === 'Yarım Gün') return sum + (a.employee.daily_wage / 2);
+                return sum;
+            }, 0);
+
+            const totalOvertimePay = totalOvertime * (attendance[0]?.employee.daily_wage / 9 || 0);
+            const totalGross = totalDailyWage + totalOvertimePay;
+
             reportContainer.innerHTML = `
-                <div class="report-header">
-                    <h2>Günlük Puantaj Raporu</h2>
-                    <p class="report-date">Tarih: ${new Date(date + 'T12:00:00').toLocaleDateString('tr-TR')}</p>
+                <div class="professional-report">
+                    <div class="report-header-professional">
+                        <div class="company-logo">
+                            <h3>DİNKY METAL ERP</h3>
+                            <span class="report-type">GÜNLÜK PUANTAJ RAPORU</span>
+                        </div>
+                        <div class="report-meta">
+                            <table class="meta-table">
+                                <tr>
+                                    <td class="meta-label">Rapor Tarihi:</td>
+                                    <td class="meta-value">${new Date().toLocaleDateString('tr-TR')}</td>
+                                </tr>
+                                <tr>
+                                    <td class="meta-label">Çalışma Günü:</td>
+                                    <td class="meta-value">${new Date(date + 'T12:00:00').toLocaleDateString('tr-TR')}</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="attendance-section">
+                        <div class="section-title">DEVAM DURUMU ÖZETİ</div>
+                        <table class="summary-table">
+                            <thead>
+                                <tr>
+                                    <th>Toplam Personel</th>
+                                    <th>Tam Gün</th>
+                                    <th>Yarım Gün</th>
+                                    <th>Gelmedi</th>
+                                    <th>Toplam Mesai</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="text-center"><strong>${attendance.length}</strong></td>
+                                    <td class="text-center">${totalPresent}</td>
+                                    <td class="text-center">${totalHalfDay}</td>
+                                    <td class="text-center">${totalAbsent}</td>
+                                    <td class="text-center">${totalOvertime} Saat</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="detail-section">
+                        <div class="section-title">PERSONEL DETAY</div>
+                        <table class="detail-table">
+                            <thead>
+                                <tr>
+                                    <th>Personel</th>
+                                    <th>Departman</th>
+                                    <th>Proje</th>
+                                    <th>Durum</th>
+                                    <th class="text-center">Mesai (Saat)</th>
+                                    <th class="text-right">Günlük Ücret</th>
+                                    <th class="text-right">Mesai Ücreti</th>
+                                    <th class="text-right">Toplam</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${attendance.map(record => {
+                                    const dailyPay = record.status === 'Tam Gün' ? record.employee.daily_wage :
+                                                    record.status === 'Yarım Gün' ? record.employee.daily_wage / 2 : 0;
+                                    const overtimePay = (record.overtime_hours || 0) * (record.employee.daily_wage / 9);
+                                    const totalPay = dailyPay + overtimePay;
+
+                                    return `
+                                        <tr>
+                                            <td><strong>${record.employee.full_name}</strong></td>
+                                            <td>${record.employee.department || '-'}</td>
+                                            <td>${record.project ? record.project.project_name : '-'}</td>
+                                            <td>
+                                                <span class="status-badge ${
+                                                    record.status === 'Tam Gün' ? 'status-success' :
+                                                    record.status === 'Yarım Gün' ? 'status-warning' :
+                                                    record.status === 'Serbest Saat' ? 'status-info' :
+                                                    'status-danger'
+                                                }">
+                                                    ${record.status}
+                                                </span>
+                                            </td>
+                                            <td class="text-center">${record.overtime_hours || 0}</td>
+                                            <td class="text-right">${formatter.currency(dailyPay)}</td>
+                                            <td class="text-right">${formatter.currency(overtimePay)}</td>
+                                            <td class="text-right"><strong>${formatter.currency(totalPay)}</strong></td>
+                                        </tr>
+                                    `;
+                                }).join('')}
+                            </tbody>
+                            <tfoot>
+                                <tr class="total-row">
+                                    <td colspan="5"><strong>TOPLAM</strong></td>
+                                    <td class="text-right"><strong>${formatter.currency(totalDailyWage)}</strong></td>
+                                    <td class="text-right"><strong>${formatter.currency(totalOvertimePay)}</strong></td>
+                                    <td class="text-right"><strong>${formatter.currency(totalGross)}</strong></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+
+                    <div class="report-footer">
+                        <p>Rapor Tarihi: ${formatter.date(new Date())}</p>
+                    </div>
                 </div>
-                
-                <div class="report-summary">
-                    <div class="summary-card">
-                        <span class="summary-label">Toplam Personel</span>
-                        <span class="summary-value">${attendance.length}</span>
-                    </div>
-                    <div class="summary-card success">
-                        <span class="summary-label">Gelen</span>
-                        <span class="summary-value">${totalPresent}</span>
-                    </div>
-                    <div class="summary-card warning">
-                        <span class="summary-label">Yarım Gün</span>
-                        <span class="summary-value">${totalHalfDay}</span>
-                    </div>
-                    <div class="summary-card danger">
-                        <span class="summary-label">Gelmedi</span>
-                        <span class="summary-value">${totalAbsent}</span>
-                    </div>
-                    <div class="summary-card info">
-                        <span class="summary-label">Toplam Mesai</span>
-                        <span class="summary-value">${totalOvertime} Saat</span>
-                    </div>
-                </div>
-                
-                <table class="report-table">
-                    <thead>
-                        <tr>
-                            <th>Personel</th>
-                            <th>Proje</th>
-                            <th>Durum</th>
-                            <th>Mesai (Saat)</th>
-                            <th>Günlük Ücret</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${attendance.map(record => `
-                            <tr>
-                                <td>${record.employee.full_name}</td>
-                                <td>${record.project ? record.project.project_name : '-'}</td>
-                                <td>
-                                    <span class="status-badge ${
-                                        record.status === 'Tam Gün' ? 'status-success' :
-                                        record.status === 'Yarım Gün' ? 'status-warning' :
-                                        record.status === 'Serbest Saat' ? 'status-info' :
-                                        'status-danger'
-                                    }">
-                                        ${record.status}${record.status === 'Serbest Saat' ? ` (${record.custom_hours || 0}h)` : ''}
-                                    </span>
-                                </td>
-                                <td>${record.overtime_hours || 0}</td>
-                                <td>${formatter.currency(record.employee.daily_wage)}</td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
             `;
-            
-            // Show export buttons
+
             document.getElementById('exportDailyBtn').style.display = 'inline-block';
             document.getElementById('printDailyBtn').style.display = 'inline-block';
-            
-            // Store data for export
+
             window.currentDailyReportData = {
                 date: date,
-                data: attendance
+                data: attendance,
+                summary: {
+                    totalPresent,
+                    totalHalfDay,
+                    totalAbsent,
+                    totalOvertime,
+                    totalDailyWage,
+                    totalOvertimePay,
+                    totalGross
+                }
             };
         } else {
             reportContainer.innerHTML = `
@@ -681,19 +741,38 @@ function getDateOfWeek(weekNum, year) {
 // Export functions
 window.exportDailyReport = function() {
     if (!window.currentDailyReportData) return;
-    
-    const { date, data } = window.currentDailyReportData;
-    
-    let csv = 'Personel,Proje,Durum,Mesai,Günlük Ücret\n';
+
+    const { date, data, summary } = window.currentDailyReportData;
+
+    let csv = 'DİNKY METAL ERP - GÜNLÜK PUANTAJ RAPORU\n';
+    csv += `Tarih: ${new Date(date + 'T12:00:00').toLocaleDateString('tr-TR')}\n`;
+    csv += `Rapor Tarihi: ${new Date().toLocaleDateString('tr-TR')}\n\n`;
+
+    csv += 'DEVAM DURUMU ÖZETİ\n';
+    csv += `Toplam Personel,Tam Gün,Yarım Gün,Gelmedi,Toplam Mesai (Saat)\n`;
+    csv += `${data.length},${summary.totalPresent},${summary.totalHalfDay},${summary.totalAbsent},${summary.totalOvertime}\n\n`;
+
+    csv += 'PERSONEL DETAY\n';
+    csv += 'Personel,Departman,Proje,Durum,Mesai (Saat),Günlük Ücret,Mesai Ücreti,Toplam\n';
+
     data.forEach(record => {
-        csv += `"${record.employee.full_name}","${record.project ? record.project.project_name : '-'}","${record.status}",${record.overtime_hours || 0},${record.employee.daily_wage}\n`;
+        const dailyPay = record.status === 'Tam Gün' ? record.employee.daily_wage :
+                        record.status === 'Yarım Gün' ? record.employee.daily_wage / 2 : 0;
+        const overtimePay = (record.overtime_hours || 0) * (record.employee.daily_wage / 9);
+        const totalPay = dailyPay + overtimePay;
+
+        csv += `"${record.employee.full_name}","${record.employee.department || '-'}","${record.project ? record.project.project_name : '-'}","${record.status}",${record.overtime_hours || 0},${dailyPay.toFixed(2)},${overtimePay.toFixed(2)},${totalPay.toFixed(2)}\n`;
     });
-    
+
+    csv += `"TOPLAM","","","","",${summary.totalDailyWage.toFixed(2)},${summary.totalOvertimePay.toFixed(2)},${summary.totalGross.toFixed(2)}\n`;
+
     const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `gunluk_rapor_${date}.csv`;
+    link.download = `Gunluk_Puantaj_${date}.csv`;
     link.click();
+
+    Toast.success('Günlük rapor Excel formatında indirildi');
 };
 
 window.exportWeeklyReport = function() {

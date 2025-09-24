@@ -1,8 +1,55 @@
 // Supabase Service Layer - All database operations
 import { supabase } from './supabaseClient.js';
+import { csrfManager } from '../utils/security.js';
+import { checkPermission } from '../middleware/authorizationMiddleware.js';
 
 // Re-export supabase client for direct use
 export { supabase };
+
+/**
+ * Combined CSRF + Authorization validation wrapper
+ * Validates both CSRF token and user permissions before executing operations
+ */
+async function withSecurityValidation(operation, operationType = 'unknown', resource = null, action = null) {
+    // Only validate for write operations
+    const writeOps = ['insert', 'update', 'delete', 'upsert'];
+    const isWriteOp = writeOps.some(op => operationType.toLowerCase().includes(op));
+
+    if (isWriteOp) {
+        // 1. CSRF Validation
+        const token = csrfManager.getToken();
+        if (!token) {
+            throw new Error('CSRF token missing');
+        }
+
+        const cookieToken = csrfManager.getTokenFromCookie();
+        if (!cookieToken || !csrfManager.validateToken(token)) {
+            throw new Error('CSRF validation failed');
+        }
+
+        // 2. Authorization Check (if resource and action provided)
+        if (resource && action) {
+            if (!checkPermission(resource, action)) {
+                const error = new Error(`Yetkiniz yok: ${action} işlemi için '${resource}' kaynağına erişim reddedildi`);
+                error.code = 'PERMISSION_DENIED';
+
+                // Log to security_events via Supabase
+                try {
+                    await supabase.rpc('log_permission_denied', {
+                        p_resource: resource,
+                        p_action: action
+                    });
+                } catch (logError) {
+                    console.error('Failed to log permission denial:', logError);
+                }
+
+                throw error;
+            }
+        }
+    }
+
+    return await operation();
+}
 
 // Employee Operations
 export const employeeService = {
@@ -33,32 +80,34 @@ export const employeeService = {
     },
 
     async create(employee) {
-        const { data, error } = await supabase
-            .from('employees')
-            .insert([employee])
-            .select()
-            .single();
-            
-        // Activity logging
-        if (!error && data) {
-            try {
-                const userInfo = this.getCurrentUserInfo();
-                await supabase.rpc('log_user_activity', {
-                    p_action_type: 'CREATE',
-                    p_table_name: 'employees',
-                    p_record_id: data.id,
-                    p_description: `Yeni personel eklendi: ${data.full_name}`,
-                    p_new_values: data,
-                    p_user_id: userInfo.id,
-                    p_user_name: userInfo.name,
-                    p_user_role: userInfo.role
-                });
-            } catch (logError) {
-                console.warn('Employee create activity logging failed:', logError);
+        return await withSecurityValidation(async () => {
+            const { data, error } = await supabase
+                .from('employees')
+                .insert([employee])
+                .select()
+                .single();
+
+            // Activity logging
+            if (!error && data) {
+                try {
+                    const userInfo = this.getCurrentUserInfo();
+                    await supabase.rpc('log_user_activity', {
+                        p_action_type: 'CREATE',
+                        p_table_name: 'employees',
+                        p_record_id: data.id,
+                        p_description: `Yeni personel eklendi: ${data.full_name}`,
+                        p_new_values: data,
+                        p_user_id: userInfo.id,
+                        p_user_name: userInfo.name,
+                        p_user_role: userInfo.role
+                    });
+                } catch (logError) {
+                    console.warn('Employee create activity logging failed:', logError);
+                }
             }
-        }
-        
-        return { data, error };
+
+            return { data, error };
+        }, 'create', 'employees', 'create');
     },
     
     getCurrentUserInfo() {

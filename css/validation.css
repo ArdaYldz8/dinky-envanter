@@ -1,0 +1,174 @@
+/* ====================================
+   VALIDATION UI STYLES
+   Real-time validation feedback system
+   ==================================== */
+
+/* Input States */
+.is-valid {
+    border-color: #28a745 !important;
+    background-color: #f0f9f0;
+}
+
+.is-invalid {
+    border-color: #dc3545 !important;
+    background-color: #fff5f5;
+}
+
+/* Validation Icons */
+.validation-icon {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    font-size: 18px;
+}
+
+.validation-success {
+    color: #28a745;
+}
+
+.validation-error-icon {
+    color: #dc3545;
+}
+
+/* Error Messages */
+.validation-error {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 6px;
+    padding: 8px 12px;
+    background-color: #fff5f5;
+    border: 1px solid #dc3545;
+    border-radius: 4px;
+    font-size: 13px;
+    color: #dc3545;
+    animation: slideDown 0.2s ease-out;
+}
+
+.validation-error-text {
+    flex: 1;
+}
+
+/* Form Groups */
+.form-group {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+    padding-right: 40px; /* Space for icon */
+}
+
+/* Animations */
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+    20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+.shake {
+    animation: shake 0.5s ease-in-out;
+}
+
+/* Focus States */
+.is-valid:focus {
+    box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+}
+
+.is-invalid:focus {
+    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+}
+
+/* Success Message */
+.validation-success-message {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 6px;
+    padding: 8px 12px;
+    background-color: #f0f9f0;
+    border: 1px solid #28a745;
+    border-radius: 4px;
+    font-size: 13px;
+    color: #28a745;
+    animation: slideDown 0.2s ease-out;
+}
+
+/* Loading State */
+.validation-loading {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+}
+
+.validation-spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #3498db;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Accessibility */
+.validation-error[role="alert"],
+.validation-success-message[role="alert"] {
+    /* Screen reader announcements */
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+    .is-valid {
+        background-color: rgba(40, 167, 69, 0.1);
+    }
+
+    .is-invalid {
+        background-color: rgba(220, 53, 69, 0.1);
+    }
+
+    .validation-error {
+        background-color: rgba(220, 53, 69, 0.15);
+        border-color: #dc3545;
+    }
+
+    .validation-success-message {
+        background-color: rgba(40, 167, 69, 0.15);
+        border-color: #28a745;
+    }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .validation-error,
+    .validation-success-message {
+        font-size: 12px;
+        padding: 6px 10px;
+    }
+
+    .validation-icon {
+        font-size: 16px;
+        right: 10px;
+    }
+}

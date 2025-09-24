@@ -4,6 +4,8 @@ import { formatter } from '../utils/formatter.js';
 import { Toast } from '../utils/toast.js';
 import { Modal } from '../components/Modal.js';
 import { escapeHtml } from '../utils/security.js';
+import { validateInput, addRealTimeValidation, validateFormOnSubmit } from '../utils/enhancedValidation.js';
+import { getValidationRule, createCustomRule } from '../utils/validationRules.js';
 
 // Helper functions for current user
 function getCurrentUser() {
@@ -154,12 +156,12 @@ window.openProductModal = function(productId = null) {
             <form id="productForm">
                 <div class="form-group">
                     <label>Ürün Adı <span class="required">*</span></label>
-                    <input type="text" id="productName" class="form-control" required>
+                    <input type="text" name="product_name" id="productName" class="form-control" required>
                 </div>
-                
+
                 <div class="form-group">
                     <label>Ürün Kodu</label>
-                    <input type="text" id="productCode" class="form-control">
+                    <input type="text" name="product_code" id="productCode" class="form-control">
                 </div>
                 
                 <!-- Barcode field temporarily disabled until database column is added
@@ -184,12 +186,12 @@ window.openProductModal = function(productId = null) {
                 
                 <div class="form-group">
                     <label>Birim Ağırlık (kg)</label>
-                    <input type="number" id="unitWeight" class="form-control" min="0" step="0.01" placeholder="0.00">
+                    <input type="number" name="unit_weight" id="unitWeight" class="form-control" min="0" step="0.01" placeholder="0.00">
                 </div>
-                
+
                 <div class="form-group">
                     <label>Ana Kategori</label>
-                    <select id="productCategory" class="form-control">
+                    <select name="category" id="productCategory" class="form-control">
                         <option value="">Kategori Seçiniz...</option>
                         <option value="VİDA">VİDA</option>
                         <option value="BOYA">BOYA</option>
@@ -202,16 +204,16 @@ window.openProductModal = function(productId = null) {
                         <option value="HIRDAVAT">HIRDAVAT</option>
                     </select>
                 </div>
-                
+
                 <div class="form-group">
                     <label>Alt Kategori</label>
-                    <input type="text" id="productSubcategory" class="form-control" placeholder="Alt kategori (opsiyonel)">
+                    <input type="text" name="subcategory" id="productSubcategory" class="form-control" placeholder="Alt kategori (opsiyonel)">
                 </div>
-                
+
                 ${!isEdit ? `
                     <div class="form-group">
                         <label>Başlangıç Stok Miktarı</label>
-                        <input type="number" id="initialStock" class="form-control" min="0" step="0.01" value="0">
+                        <input type="number" name="initial_stock" id="initialStock" class="form-control" min="0" step="0.01" value="0">
                     </div>
                 ` : ''}
                 
@@ -231,10 +233,29 @@ window.openProductModal = function(productId = null) {
     modal.show();
 
     const form = document.getElementById('productForm');
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        await saveProduct(productId, modal);
-    });
+
+    // Add validation
+    const validationRules = {
+        product_name: { ...getValidationRule('text'), required: true, minLength: 2, maxLength: 200 },
+        product_code: { ...getValidationRule('productCode'), maxLength: 20 },
+        unit_weight: { ...getValidationRule('weight'), min: 0, max: 999999 },
+        subcategory: { ...getValidationRule('text'), maxLength: 100 }
+    };
+
+    if (!isEdit) {
+        validationRules.initial_stock = { ...getValidationRule('quantity'), min: 0, max: 999999 };
+    }
+
+    addRealTimeValidation(form, validationRules);
+
+    validateFormOnSubmit(form, validationRules,
+        async (sanitizedData) => {
+            await saveProduct(productId, modal, sanitizedData);
+        },
+        () => {
+            Toast.error('Lütfen formu eksiksiz doldurun');
+        }
+    );
 
     if (isEdit) {
         loadProductData(productId);
@@ -258,12 +279,19 @@ async function loadProductData(productId) {
     }
 }
 
-async function saveProduct(productId, modal) {
+async function saveProduct(productId, modal, sanitizedData = null) {
     try {
-        const productData = {
+        const productData = sanitizedData ? {
+            product_name: sanitizedData.product_name,
+            product_code: sanitizedData.product_code || null,
+            unit: document.getElementById('unit').value,
+            unit_weight: parseFloat(sanitizedData.unit_weight) || 0,
+            min_stock_level: 0,
+            category: document.getElementById('productCategory').value || null,
+            subcategory: sanitizedData.subcategory || null
+        } : {
             product_name: document.getElementById('productName').value,
             product_code: document.getElementById('productCode').value || null,
-            // barcode: document.getElementById('productBarcode').value || null,
             unit: document.getElementById('unit').value,
             unit_weight: parseFloat(document.getElementById('unitWeight').value) || 0,
             min_stock_level: 0,
@@ -272,7 +300,9 @@ async function saveProduct(productId, modal) {
         };
 
         if (!productId) {
-            productData.current_stock = parseFloat(document.getElementById('initialStock')?.value) || 0;
+            productData.current_stock = sanitizedData ?
+                parseFloat(sanitizedData.initial_stock) || 0 :
+                parseFloat(document.getElementById('initialStock')?.value) || 0;
         }
 
         let result;

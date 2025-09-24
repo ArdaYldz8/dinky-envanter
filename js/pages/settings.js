@@ -3,6 +3,8 @@ import { projectService, supabase } from '../services/supabaseService.js';
 import { formatter } from '../utils/formatter.js';
 import { Toast } from '../utils/toast.js';
 import { Modal } from '../components/Modal.js';
+import { mfaManager } from '../utils/mfaManager.js';
+import { MFAEnrollmentModal } from '../components/MFAEnrollmentModal.js';
 
 // Helper functions for current user
 function getCurrentUser() {
@@ -26,7 +28,10 @@ export async function loadSettings() {
         <div class="page-content">
             <div class="tabs">
                 <ul class="tab-nav">
-                    <li class="tab-item active" data-tab="projects">
+                    <li class="tab-item" data-tab="security">
+                        <i class="fas fa-shield-alt"></i> Güvenlik
+                    </li>
+                    <li class="tab-item" data-tab="projects">
                         <i class="fas fa-project-diagram"></i> Projeler
                     </li>
                     ${isAdmin() ? `
@@ -37,7 +42,81 @@ export async function loadSettings() {
                 </ul>
                 
                 <div class="tab-content">
-                    <div class="tab-pane active" id="projectsTab">
+                    <div class="tab-pane" id="securityTab">
+                        <div class="security-section">
+                            <h2><i class="fas fa-lock"></i> Güvenlik Ayarları</h2>
+
+                            <!-- MFA Section -->
+                            <div class="settings-card">
+                                <div class="settings-card-header">
+                                    <div>
+                                        <h3><i class="fas fa-mobile-alt"></i> İki Faktörlü Kimlik Doğrulama (2FA)</h3>
+                                        <p class="text-muted">Hesabınızı ekstra bir güvenlik katmanı ile koruyun</p>
+                                    </div>
+                                    <div class="mfa-status" id="mfaStatusBadge">
+                                        <span class="badge badge-secondary">Yükleniyor...</span>
+                                    </div>
+                                </div>
+
+                                <div class="settings-card-body" id="mfaSettings">
+                                    <div class="text-center">
+                                        <div class="spinner-border text-primary" role="status"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Backup Codes Section -->
+                            <div class="settings-card" id="backupCodesSection" style="display: none;">
+                                <div class="settings-card-header">
+                                    <div>
+                                        <h3><i class="fas fa-key"></i> Yedek Kodlar</h3>
+                                        <p class="text-muted">Telefonunuza erişiminiz olmadığında kullanabileceğiniz tek seferlik kodlar</p>
+                                    </div>
+                                    <div id="backupCodesCount">
+                                        <span class="badge badge-info">- kalan</span>
+                                    </div>
+                                </div>
+
+                                <div class="settings-card-body">
+                                    <button class="btn btn-outline-primary" onclick="window.showBackupCodes()">
+                                        <i class="fas fa-eye"></i> Yedek Kodları Göster
+                                    </button>
+                                    <button class="btn btn-outline-warning ml-2" onclick="window.regenerateBackupCodes()">
+                                        <i class="fas fa-sync"></i> Yeni Kodlar Oluştur
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- MFA Audit Log Section -->
+                            <div class="settings-card" id="mfaAuditSection" style="display: none;">
+                                <div class="settings-card-header">
+                                    <div>
+                                        <h3><i class="fas fa-history"></i> Güvenlik Geçmişi</h3>
+                                        <p class="text-muted">2FA ile ilgili son aktiviteleriniz</p>
+                                    </div>
+                                </div>
+
+                                <div class="settings-card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-sm">
+                                            <thead>
+                                                <tr>
+                                                    <th>Tarih</th>
+                                                    <th>Olay</th>
+                                                    <th>Durum</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="mfaAuditLogBody">
+                                                <tr><td colspan="3" class="text-center">Yükleniyor...</td></tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="tab-pane" id="projectsTab">
                         <div class="section-header">
                             <h2>Proje Yönetimi</h2>
                             <button class="btn btn-primary" onclick="window.openProjectModal()">
@@ -933,5 +1012,253 @@ async function verifyActivityAccess() {
             `;
             document.head.appendChild(style);
         }
+
+        // Initialize security tab if active
+        const securityTab = document.getElementById('securityTab');
+        if (securityTab) {
+            initializeSecuritySettings();
+        }
     });
+}
+
+// MFA Settings Functions
+async function initializeSecuritySettings() {
+    try {
+        const user = getCurrentUser();
+        const factors = await mfaManager.listFactors();
+
+        const hasMFA = factors && factors.length > 0;
+
+        const mfaStatusBadge = document.getElementById('mfaStatusBadge');
+        const mfaSettings = document.getElementById('mfaSettings');
+
+        if (hasMFA) {
+            mfaStatusBadge.innerHTML = '<span class="badge badge-success"><i class="fas fa-check-circle"></i> Etkin</span>';
+
+            mfaSettings.innerHTML = `
+                <div class="alert alert-success">
+                    <i class="fas fa-shield-alt"></i>
+                    <strong>2FA Etkin!</strong> Hesabınız ekstra güvenlik katmanı ile korunuyor.
+                </div>
+
+                <div class="mfa-device-info mb-3">
+                    <h5>Kayıtlı Cihaz</h5>
+                    <div class="device-card">
+                        <i class="fas fa-mobile-alt fa-2x text-success"></i>
+                        <div class="device-details">
+                            <strong>${factors[0].friendly_name || 'Authenticator App'}</strong>
+                            <small class="text-muted d-block">Oluşturma: ${new Date(factors[0].created_at).toLocaleDateString('tr-TR')}</small>
+                        </div>
+                        <button class="btn btn-sm btn-danger" onclick="window.disableMFA('${factors[0].id}')">
+                            <i class="fas fa-times"></i> Devre Dışı Bırak
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            // Show backup codes section
+            document.getElementById('backupCodesSection').style.display = 'block';
+            document.getElementById('mfaAuditSection').style.display = 'block';
+
+            // Load backup codes count
+            const backupCount = await mfaManager.getUnusedBackupCodesCount(user.id);
+            document.getElementById('backupCodesCount').innerHTML =
+                `<span class="badge badge-${backupCount < 3 ? 'warning' : 'info'}">${backupCount} kalan</span>`;
+
+            // Load MFA audit log
+            await loadMFAAuditLog(user.id);
+        } else {
+            mfaStatusBadge.innerHTML = '<span class="badge badge-warning"><i class="fas fa-exclamation-triangle"></i> Pasif</span>';
+
+            mfaSettings.innerHTML = `
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>2FA Pasif!</strong> Hesabınızı ekstra bir güvenlik katmanı ile koruyun.
+                </div>
+
+                <p>İki faktörlü kimlik doğrulama (2FA), hesabınıza giriş yaparken şifrenizin yanı sıra telefonunuzdaki authenticator uygulamasından bir kod girmenizi gerektirir.</p>
+
+                <div class="alert alert-info">
+                    <strong>Nasıl çalışır?</strong>
+                    <ol class="mb-0">
+                        <li>Telefonunuza bir authenticator app yükleyin (Google Authenticator, Microsoft Authenticator, Authy)</li>
+                        <li>QR kodu tarayın veya secret key'i girin</li>
+                        <li>Her girişte uygulamadaki 6 haneli kodu kullanın</li>
+                    </ol>
+                </div>
+
+                <button class="btn btn-primary" onclick="window.enableMFA()">
+                    <i class="fas fa-shield-alt"></i> 2FA'yı Etkinleştir
+                </button>
+            `;
+
+            // Hide backup codes section
+            document.getElementById('backupCodesSection').style.display = 'none';
+            document.getElementById('mfaAuditSection').style.display = 'none';
+        }
+    } catch (error) {
+        console.error('Initialize security settings error:', error);
+        Toast.error('Güvenlik ayarları yüklenirken hata oluştu');
+    }
+}
+
+window.enableMFA = async function() {
+    const enrollmentModal = new MFAEnrollmentModal();
+    await enrollmentModal.show();
+
+    // Refresh settings after enrollment
+    setTimeout(() => {
+        initializeSecuritySettings();
+    }, 1000);
+};
+
+window.disableMFA = async function(factorId) {
+    const confirmed = await Modal.confirm(
+        '2FA\'yı devre dışı bırakmak istediğinizden emin misiniz? Bu işlem hesabınızın güvenliğini azaltacaktır.',
+        '2FA Devre Dışı Bırak',
+        'danger'
+    );
+
+    if (confirmed) {
+        try {
+            await mfaManager.unenroll(factorId);
+            Toast.success('2FA devre dışı bırakıldı');
+            await initializeSecuritySettings();
+        } catch (error) {
+            console.error('Disable MFA error:', error);
+            Toast.error('2FA devre dışı bırakılırken hata oluştu');
+        }
+    }
+};
+
+window.showBackupCodes = async function() {
+    const user = getCurrentUser();
+
+    try {
+        const { data, error } = await supabase
+            .from('mfa_backup_codes')
+            .select('code_hash, used_at, created_at')
+            .eq('user_id', user.id)
+            .is('used_at', null)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        const codesHTML = data && data.length > 0 ?
+            data.map((code, i) => `
+                <div class="backup-code-item">
+                    <span class="backup-code-number">${i + 1}.</span>
+                    <code class="backup-code">••••••••</code>
+                    <small class="text-muted">(Oluşturma: ${new Date(code.created_at).toLocaleDateString('tr-TR')})</small>
+                </div>
+            `).join('') :
+            '<p class="text-muted">Kullanılabilir yedek kod bulunamadı.</p>';
+
+        const modal = new Modal({
+            title: '<i class="fas fa-key"></i> Yedek Kodlar',
+            content: `
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>Güvenlik Nedeniyle:</strong> Yedek kodlar hashlenmiş olarak saklanır ve gösterilemez. Kodlarınızı kaybettiyseniz yeni kodlar oluşturun.
+                </div>
+
+                <div class="backup-codes-list">
+                    ${codesHTML}
+                </div>
+
+                <p class="text-muted mt-3">
+                    <strong>Not:</strong> Kullanılmamış ${data.length} adet yedek kodunuz var. Her kod tek kullanımlıktır.
+                </p>
+            `,
+            size: 'medium'
+        });
+
+        modal.show();
+    } catch (error) {
+        console.error('Show backup codes error:', error);
+        Toast.error('Yedek kodlar yüklenirken hata oluştu');
+    }
+};
+
+window.regenerateBackupCodes = async function() {
+    const confirmed = await Modal.confirm(
+        'Yeni yedek kodlar oluşturursanız eski kodlarınız geçersiz olacaktır. Devam etmek istiyor musunuz?',
+        'Yeni Yedek Kodlar Oluştur',
+        'warning'
+    );
+
+    if (confirmed) {
+        try {
+            const user = getCurrentUser();
+            const newCodes = await mfaManager.regenerateBackupCodes(user.id);
+
+            const codesHTML = newCodes.map((code, i) => `
+                <div class="backup-code-item">
+                    <span class="backup-code-number">${i + 1}.</span>
+                    <code class="backup-code">${code}</code>
+                </div>
+            `).join('');
+
+            const modal = new Modal({
+                title: '<i class="fas fa-key"></i> Yeni Yedek Kodlar',
+                content: `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>ÖNEMLİ:</strong> Bu kodları güvenli bir yere kaydedin. Bir daha gösterilmeyecekler!
+                    </div>
+
+                    <div class="backup-codes-grid">
+                        ${codesHTML}
+                    </div>
+
+                    <div class="text-center mt-4">
+                        <button class="btn btn-secondary mr-2" onclick="window.printBackupCodes()">
+                            <i class="fas fa-print"></i> Yazdır
+                        </button>
+                        <button class="btn btn-outline-secondary" onclick="window.downloadBackupCodes()">
+                            <i class="fas fa-download"></i> İndir
+                        </button>
+                    </div>
+                `,
+                size: 'large'
+            });
+
+            window.backupCodesForDownload = newCodes;
+            modal.show();
+
+            Toast.success('Yeni yedek kodlar oluşturuldu');
+            await initializeSecuritySettings();
+        } catch (error) {
+            console.error('Regenerate backup codes error:', error);
+            Toast.error('Yedek kodlar oluşturulurken hata oluştu');
+        }
+    }
+};
+
+async function loadMFAAuditLog(userId) {
+    try {
+        const logs = await mfaManager.getMFAAuditLog(userId, 10);
+
+        const tbody = document.getElementById('mfaAuditLogBody');
+
+        if (logs && logs.length > 0) {
+            tbody.innerHTML = logs.map(log => `
+                <tr>
+                    <td>${new Date(log.created_at).toLocaleString('tr-TR')}</td>
+                    <td>${mfaManager.formatEventType(log.event_type)}</td>
+                    <td>
+                        <span class="badge badge-${log.success ? 'success' : 'danger'}">
+                            ${log.success ? 'Başarılı' : 'Başarısız'}
+                        </span>
+                    </td>
+                </tr>
+            `).join('');
+        } else {
+            tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">Henüz aktivite kaydı yok</td></tr>';
+        }
+    } catch (error) {
+        console.error('Load MFA audit log error:', error);
+        const tbody = document.getElementById('mfaAuditLogBody');
+        tbody.innerHTML = '<tr><td colspan="3" class="text-center text-danger">Kayıtlar yüklenemedi</td></tr>';
+    }
 }

@@ -10,6 +10,7 @@ import { loadSettings } from './pages/settings.js';
 import { loadTasks } from './pages/tasks.js';
 import { loadCustomers } from './pages/customers.js';
 import { Toast } from './utils/toast.js';
+import { initCSRFProtection } from './middleware/csrfMiddleware.js';
 
 // Router configuration
 const routes = {
@@ -166,7 +167,11 @@ window.logout = async function() {
 // Initialize application
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('Initializing Dinky Metal ERP...');
-    
+
+    // Initialize CSRF protection
+    initCSRFProtection();
+    console.log('✅ CSRF protection initialized');
+
     // Check authentication first
     if (!checkAuth()) {
         return;

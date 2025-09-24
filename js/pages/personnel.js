@@ -4,6 +4,8 @@ import { formatter } from '../utils/formatter.js';
 import { Toast } from '../utils/toast.js';
 import { Modal } from '../components/Modal.js';
 import { escapeHtml } from '../utils/security.js';
+import { validateInput, addRealTimeValidation, validateFormOnSubmit } from '../utils/enhancedValidation.js';
+import { getValidationRule, combineRules } from '../utils/validationRules.js';
 
 export async function loadPersonnel() {
     const content = document.getElementById('mainContent');
@@ -120,28 +122,28 @@ window.openEmployeeModal = function(employeeId = null) {
             <form id="employeeForm">
                 <div class="form-group">
                     <label>Ad Soyad <span class="required">*</span></label>
-                    <input type="text" id="fullName" class="form-control" required>
+                    <input type="text" name="full_name" id="fullName" class="form-control" required>
                 </div>
-                
+
                 <div class="form-group">
                     <label>Birim/Departman</label>
-                    <input type="text" id="department" class="form-control" placeholder="Örn: İMALAT ŞEFİ">
+                    <input type="text" name="department" id="department" class="form-control" placeholder="Örn: İMALAT ŞEFİ">
                 </div>
-                
+
                 <div class="form-group">
                     <label>Aylık Maaş (₺) <span class="required">*</span></label>
-                    <input type="number" id="monthlySalary" class="form-control" min="0" step="1" required>
+                    <input type="number" name="monthly_salary" id="monthlySalary" class="form-control" min="0" step="1" required>
                 </div>
-                
+
                 <div class="form-group">
                     <label>Günlük Ücret (₺)</label>
-                    <input type="number" id="dailyWage" class="form-control" min="0" step="0.01" readonly>
+                    <input type="number" name="daily_wage" id="dailyWage" class="form-control" min="0" step="0.01" readonly>
                     <small class="form-text text-muted">Otomatik hesaplanır (Aylık Maaş ÷ 30)</small>
                 </div>
-                
+
                 <div class="form-group">
                     <label>İşe Başlama Tarihi <span class="required">*</span></label>
-                    <input type="date" id="startDate" class="form-control" required>
+                    <input type="date" name="start_date" id="startDate" class="form-control" required>
                 </div>
                 
                 <div class="form-group">
@@ -166,10 +168,25 @@ window.openEmployeeModal = function(employeeId = null) {
     modal.show();
 
     const form = document.getElementById('employeeForm');
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        await saveEmployee(employeeId, modal);
-    });
+
+    // Add validation
+    const validationRules = {
+        full_name: combineRules('name'),
+        department: { ...getValidationRule('text'), maxLength: 100 },
+        monthly_salary: { ...getValidationRule('currency'), required: true, min: 0, max: 999999999 },
+        start_date: { ...getValidationRule('date'), required: true }
+    };
+
+    addRealTimeValidation(form, validationRules);
+
+    validateFormOnSubmit(form, validationRules,
+        async (sanitizedData) => {
+            await saveEmployee(employeeId, modal, sanitizedData);
+        },
+        () => {
+            Toast.error('Lütfen formu eksiksiz doldurun');
+        }
+    );
 
     // Auto-calculate daily wage when monthly salary changes
     const monthlySalaryInput = document.getElementById('monthlySalary');
@@ -204,9 +221,16 @@ async function loadEmployeeData(employeeId) {
     }
 }
 
-async function saveEmployee(employeeId, modal) {
+async function saveEmployee(employeeId, modal, sanitizedData = null) {
     try {
-        const employeeData = {
+        const employeeData = sanitizedData ? {
+            full_name: sanitizedData.full_name,
+            department: sanitizedData.department || null,
+            monthly_salary: parseFloat(sanitizedData.monthly_salary),
+            daily_wage: parseFloat(document.getElementById('dailyWage').value),
+            start_date: sanitizedData.start_date,
+            is_active: document.getElementById('isActive').checked
+        } : {
             full_name: document.getElementById('fullName').value,
             department: document.getElementById('department').value || null,
             monthly_salary: parseFloat(document.getElementById('monthlySalary').value),
@@ -256,17 +280,17 @@ window.openTransactionModal = function() {
                 
                 <div class="form-group">
                     <label>Tutar (₺) <span class="required">*</span></label>
-                    <input type="number" id="amount" class="form-control" min="0" step="0.01" required>
+                    <input type="number" name="amount" id="amount" class="form-control" min="0" step="0.01" required>
                 </div>
-                
+
                 <div class="form-group">
                     <label>Tarih <span class="required">*</span></label>
-                    <input type="date" id="transactionDate" class="form-control" required>
+                    <input type="date" name="transaction_date" id="transactionDate" class="form-control" required>
                 </div>
-                
+
                 <div class="form-group">
                     <label>Açıklama</label>
-                    <textarea id="description" class="form-control" rows="2"></textarea>
+                    <textarea name="description" id="description" class="form-control" rows="2" maxlength="500"></textarea>
                 </div>
                 
                 <div class="modal-footer">
@@ -285,10 +309,24 @@ window.openTransactionModal = function() {
     document.getElementById('transactionDate').value = formatter.dateForInput();
 
     const form = document.getElementById('transactionForm');
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        await saveTransaction(modal);
-    });
+
+    // Add validation
+    const validationRules = {
+        amount: { ...getValidationRule('currency'), required: true, min: 0.01, max: 999999999 },
+        transaction_date: { ...getValidationRule('date'), required: true },
+        description: { ...getValidationRule('notes'), maxLength: 500 }
+    };
+
+    addRealTimeValidation(form, validationRules);
+
+    validateFormOnSubmit(form, validationRules,
+        async (sanitizedData) => {
+            await saveTransaction(modal, sanitizedData);
+        },
+        () => {
+            Toast.error('Lütfen formu eksiksiz doldurun');
+        }
+    );
 };
 
 async function loadEmployeeOptions() {
@@ -308,9 +346,15 @@ async function loadEmployeeOptions() {
     }
 }
 
-async function saveTransaction(modal) {
+async function saveTransaction(modal, sanitizedData = null) {
     try {
-        const transactionData = {
+        const transactionData = sanitizedData ? {
+            employee_id: document.getElementById('employeeId').value,
+            type: document.getElementById('transactionType').value,
+            amount: parseFloat(sanitizedData.amount),
+            transaction_date: sanitizedData.transaction_date,
+            description: sanitizedData.description || null
+        } : {
             employee_id: document.getElementById('employeeId').value,
             type: document.getElementById('transactionType').value,
             amount: parseFloat(document.getElementById('amount').value),

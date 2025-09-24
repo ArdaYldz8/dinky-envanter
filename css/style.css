@@ -1,5 +1,132 @@
 /* Dinky Metal ERP - Main Styles */
 
+/* MFA Settings Styles */
+.mfa-status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.mfa-status.enabled {
+    background: #d4edda;
+    border: 1px solid #c3e6cb;
+    color: #155724;
+}
+
+.mfa-status.disabled {
+    background: #fff3cd;
+    border: 1px solid #ffeeba;
+    color: #856404;
+}
+
+.device-card {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 15px;
+}
+
+.device-card h6 {
+    margin: 0 0 10px 0;
+    color: #333;
+    font-weight: 600;
+}
+
+.device-card p {
+    margin: 5px 0;
+    font-size: 0.9em;
+    color: #6c757d;
+}
+
+.device-card .btn-sm {
+    margin-top: 10px;
+}
+
+.backup-codes-info {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px;
+    background: #e7f3ff;
+    border: 1px solid #b3d7ff;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.backup-codes-info .info-text {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #004085;
+}
+
+.backup-codes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
+    margin: 20px 0;
+}
+
+.backup-code-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+}
+
+.backup-code-number {
+    color: #6c757d;
+    font-size: 0.9em;
+}
+
+.backup-code {
+    font-family: 'Courier New', monospace;
+    font-size: 1.1em;
+    font-weight: 600;
+    color: #495057;
+    letter-spacing: 1px;
+}
+
+.audit-log-table {
+    width: 100%;
+    margin-top: 20px;
+}
+
+.audit-log-table th {
+    background: #f8f9fa;
+    padding: 12px;
+    text-align: left;
+    font-weight: 600;
+    color: #495057;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.audit-log-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.audit-log-table tr:hover {
+    background: #f8f9fa;
+}
+
+.audit-log-table .status-success {
+    color: #28a745;
+    font-weight: 600;
+}
+
+.audit-log-table .status-failed {
+    color: #dc3545;
+    font-weight: 600;
+}
+
 /* Custom Modal Styles */
 .custom-modal {
     position: fixed;
