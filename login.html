@@ -354,11 +354,29 @@
                     console.log('🔍 JWT Payload:', payload);
                     console.log('🔍 user_role claim:', payload.user_role);
 
-                    const userRole = payload.user_role;
+                    let userRole = payload.user_role;
 
+                    // If role not in JWT, fetch from database
                     if (!userRole || userRole === 'null') {
-                        await supabase.auth.signOut();
-                        throw new Error('Kullanıcı rolü bulunamadı. Lütfen yöneticiyle iletişime geçin.');
+                        console.log('📡 Fetching role from database...');
+
+                        // Call our public function to get user role
+                        const { data: roleData, error: roleError } = await supabase
+                            .rpc('get_user_role_by_email', { user_email: email });
+
+                        if (roleError) {
+                            console.error('Role fetch error:', roleError);
+                            await supabase.auth.signOut();
+                            throw new Error('Kullanıcı rolü alınamadı. Lütfen yöneticiyle iletişime geçin.');
+                        }
+
+                        userRole = roleData;
+                        console.log('✅ Role fetched from DB:', userRole);
+
+                        if (!userRole) {
+                            await supabase.auth.signOut();
+                            throw new Error('Kullanıcı rolü bulunamadı. Lütfen yöneticiyle iletişime geçin.');
+                        }
                     }
 
                     // Store session data in localStorage (for backward compatibility)
