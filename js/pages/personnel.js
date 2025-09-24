@@ -3,6 +3,7 @@ import { employeeService, transactionService, attendanceService } from '../servi
 import { formatter } from '../utils/formatter.js';
 import { Toast } from '../utils/toast.js';
 import { Modal } from '../components/Modal.js';
+import { escapeHtml } from '../utils/security.js';
 
 export async function loadPersonnel() {
     const content = document.getElementById('mainContent');
@@ -63,9 +64,9 @@ async function loadEmployees() {
         
         if (employees && employees.length > 0) {
             tbody.innerHTML = employees.map(emp => `
-                <tr data-id="${emp.id}">
+                <tr data-id="${escapeHtml(emp.id)}">
                     <td>
-                        <strong>${emp.full_name}</strong>
+                        <strong>${escapeHtml(emp.full_name)}</strong>
                     </td>
                     <td>
                         <span class="badge badge-info">${emp.department || '-'}</span>

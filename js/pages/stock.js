@@ -3,6 +3,7 @@ import { productService, inventoryService, employeeService, projectService, barc
 import { formatter } from '../utils/formatter.js';
 import { Toast } from '../utils/toast.js';
 import { Modal } from '../components/Modal.js';
+import { escapeHtml } from '../utils/security.js';
 
 // Helper functions for current user
 function getCurrentUser() {
@@ -88,13 +89,13 @@ async function loadProducts() {
                 const unitWeight = product.unit_weight || 0;
                 const totalWeight = (product.current_stock || 0) * unitWeight;
                 return `
-                <tr data-id="${product.id}">
-                    <td><strong>${product.product_name}</strong></td>
-                    <td><span class="text-muted">${product.product_code || '-'}</span></td>
-                    <td>${product.unit}</td>
+                <tr data-id="${escapeHtml(product.id)}">
+                    <td><strong>${escapeHtml(product.product_name)}</strong></td>
+                    <td><span class="text-muted">${escapeHtml(product.product_code || '-')}</span></td>
+                    <td>${escapeHtml(product.unit)}</td>
                     <td>${formatter.number(product.current_stock || 0, 0)}</td>
-                    <td><span class="badge badge-primary">${product.category || '-'}</span></td>
-                    <td><span class="badge badge-secondary">${product.subcategory || '-'}</span></td>
+                    <td><span class="badge badge-primary">${escapeHtml(product.category || '-')}</span></td>
+                    <td><span class="badge badge-secondary">${escapeHtml(product.subcategory || '-')}</span></td>
                     <td><span class="barcode-cell text-muted">-</span></td>
                     <td>
                         <button class="btn btn-sm btn-primary" onclick="window.openStockMovementModal('${product.id}')" title="Stok Hareketi">

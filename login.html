@@ -163,6 +163,21 @@
             font-weight: 600;
             color: #667eea;
         }
+
+        .field-error {
+            color: #d32f2f;
+            font-size: 0.85rem;
+            margin-top: 0.25rem;
+            display: block;
+        }
+
+        input.error {
+            border-color: #d32f2f !important;
+        }
+
+        input.valid {
+            border-color: #4caf50 !important;
+        }
     </style>
 </head>
 <body>
@@ -227,14 +242,26 @@
             location.replace(`https:${location.href.substring(location.protocol.length)}`);
         }
 
-        // Input validation and sanitization
+        // Enhanced input validation and sanitization
         function validateEmail(email) {
             const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            // Check for SQL injection patterns
+            const sqlPatterns = ['--', '/*', '*/', 'xp_', 'sp_', 'exec', 'execute', 'union', 'select'];
+            const lowerEmail = email.toLowerCase();
+            for (const pattern of sqlPatterns) {
+                if (lowerEmail.includes(pattern)) {
+                    return false;
+                }
+            }
             return re.test(email) && email.length <= 254;
         }
 
         function sanitizeInput(input) {
-            return input.trim().replace(/[<>'"]/g, '');
+            // Remove dangerous characters and trim
+            return input.trim()
+                .replace(/[<>'"\/\\]/g, '')
+                .replace(/javascript:/gi, '')
+                .replace(/on\w+\s*=/gi, '');
         }
 
         // Rate limiting for login attempts
