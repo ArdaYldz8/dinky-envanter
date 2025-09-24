@@ -1,6 +1,7 @@
 import { Modal } from './Modal.js';
 import { mfaManager } from '../utils/mfaManager.js';
 import { Toast } from '../utils/toast.js';
+import { supabase } from '../services/supabaseClient.js';
 
 export class MFAEnrollmentModal {
     constructor() {
