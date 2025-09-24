@@ -388,7 +388,14 @@ async function renderProjectDensityChart() {
             chart: {
                 type: 'bar',
                 height: 300,
-                toolbar: { show: false }
+                toolbar: { show: false },
+                events: {
+                    dataPointSelection: function(event, chartContext, config) {
+                        const projectName = config.w.globals.labels[config.dataPointIndex];
+                        const details = projectPersonnelDetails[projectName] || [];
+                        showProjectPersonnelModal(projectName, details);
+                    }
+                }
             },
             plotOptions: {
                 bar: {
@@ -405,36 +412,10 @@ async function renderProjectDensityChart() {
             yaxis: { title: { text: 'Personel Sayısı' } },
             grid: { borderColor: '#e9ecef' },
             tooltip: {
+                enabled: true,
                 theme: 'light',
-                custom: function({ series, seriesIndex, dataPointIndex, w }) {
-                    const projectName = w.globals.labels[dataPointIndex];
-                    const count = series[seriesIndex][dataPointIndex];
-                    const details = projectPersonnelDetails[projectName] || [];
-
-                    let tooltipHTML = `
-                        <div style="padding: 10px; min-width: 200px;">
-                            <div style="font-weight: 600; margin-bottom: 8px; color: #007bff;">
-                                ${projectName}
-                            </div>
-                            <div style="font-size: 13px; margin-bottom: 8px;">
-                                Toplam: ${count} personel
-                            </div>
-                    `;
-
-                    if (details.length > 0) {
-                        tooltipHTML += '<div style="border-top: 1px solid #e9ecef; padding-top: 8px; max-height: 200px; overflow-y: auto;">';
-                        details.forEach((emp, idx) => {
-                            tooltipHTML += `
-                                <div style="font-size: 12px; padding: 3px 0; color: #666;">
-                                    ${idx + 1}. ${emp.name} <span style="color: #007bff;">(${emp.days} gün)</span>
-                                </div>
-                            `;
-                        });
-                        tooltipHTML += '</div>';
-                    }
-
-                    tooltipHTML += '</div>';
-                    return tooltipHTML;
+                y: {
+                    formatter: (val) => val + ' personel (tıklayarak detayları görün)'
                 }
             }
         };
@@ -477,4 +458,100 @@ async function renderProjectDensityChart() {
             }
         }
     }
+}
+
+// Show Project Personnel Details Modal
+function showProjectPersonnelModal(projectName, personnelDetails) {
+    // Create modal overlay
+    const modalOverlay = document.createElement('div');
+    modalOverlay.className = 'modal-overlay';
+    modalOverlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+    `;
+
+    // Create modal content
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = `
+        background: white;
+        border-radius: 8px;
+        padding: 24px;
+        max-width: 500px;
+        width: 90%;
+        max-height: 80vh;
+        overflow-y: auto;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    `;
+
+    // Build personnel list
+    let personnelHTML = '';
+    if (personnelDetails.length > 0) {
+        personnelHTML = personnelDetails.map((emp, idx) => `
+            <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e9ecef;">
+                <span style="color: #495057;">${idx + 1}. ${emp.name}</span>
+                <span style="color: #007bff; font-weight: 500;">${emp.days} gün</span>
+            </div>
+        `).join('');
+    } else {
+        personnelHTML = '<p style="color: #6c757d; text-align: center;">Personel kaydı bulunamadı</p>';
+    }
+
+    modalContent.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h3 style="margin: 0; color: #007bff;">
+                <i class="fas fa-users"></i> ${projectName}
+            </h3>
+            <button class="close-modal-btn" style="
+                background: none;
+                border: none;
+                font-size: 24px;
+                color: #6c757d;
+                cursor: pointer;
+                padding: 0;
+                width: 30px;
+                height: 30px;
+            ">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div style="margin-bottom: 16px;">
+            <strong>Toplam Personel:</strong> ${personnelDetails.length} kişi
+        </div>
+        <div style="margin-top: 16px;">
+            ${personnelHTML}
+        </div>
+    `;
+
+    // Append to overlay
+    modalOverlay.appendChild(modalContent);
+    document.body.appendChild(modalOverlay);
+
+    // Close handlers
+    const closeModal = () => {
+        document.body.removeChild(modalOverlay);
+    };
+
+    modalOverlay.querySelector('.close-modal-btn').addEventListener('click', closeModal);
+    modalOverlay.addEventListener('click', (e) => {
+        if (e.target === modalOverlay) {
+            closeModal();
+        }
+    });
+
+    // Close on ESC key
+    const escHandler = (e) => {
+        if (e.key === 'Escape') {
+            closeModal();
+            document.removeEventListener('keydown', escHandler);
+        }
+    };
+    document.addEventListener('keydown', escHandler);
 }
