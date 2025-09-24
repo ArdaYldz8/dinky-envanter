@@ -346,48 +346,51 @@
                 }
 
                 if (data.user && data.session) {
-                    // Decode JWT to get user_role claim
-                    const jwt = data.session.access_token;
-                    const payload = JSON.parse(atob(jwt.split('.')[1]));
+                    console.log('✅ Authentication successful, fetching user role...');
 
-                    // DEBUG: JWT içeriğini göster
-                    console.log('🔍 JWT Payload:', payload);
-                    console.log('🔍 user_role claim:', payload.user_role);
+                    // Always fetch role from database (more reliable than JWT claims)
+                    const { data: sessionData, error: sessionError } = await supabase
+                        .rpc('get_user_session_data');
 
-                    let userRole = payload.user_role;
+                    if (sessionError) {
+                        console.error('Session data fetch error:', sessionError);
 
-                    // If role not in JWT, fetch from database
-                    if (!userRole || userRole === 'null') {
-                        console.log('📡 Fetching role from database...');
-
-                        // Call our public function to get user role
+                        // Fallback: Try to get role directly
                         const { data: roleData, error: roleError } = await supabase
                             .rpc('get_user_role_by_email', { user_email: email });
 
-                        if (roleError) {
-                            console.error('Role fetch error:', roleError);
+                        if (roleError || !roleData) {
                             await supabase.auth.signOut();
                             throw new Error('Kullanıcı rolü alınamadı. Lütfen yöneticiyle iletişime geçin.');
                         }
 
-                        userRole = roleData;
-                        console.log('✅ Role fetched from DB:', userRole);
+                        // Use fallback data
+                        const userData = {
+                            id: data.user.id,
+                            email: data.user.email,
+                            role: roleData,
+                            loginTime: new Date().toISOString()
+                        };
 
-                        if (!userRole) {
-                            await supabase.auth.signOut();
-                            throw new Error('Kullanıcı rolü bulunamadı. Lütfen yöneticiyle iletişime geçin.');
+                        localStorage.setItem('dinky_user', JSON.stringify(userData));
+                    } else {
+                        // Use session data from database
+                        console.log('📌 User session data:', sessionData);
+
+                        const userData = {
+                            id: sessionData.id || data.user.id,
+                            email: sessionData.email || data.user.email,
+                            role: sessionData.role,
+                            loginTime: new Date().toISOString()
+                        };
+
+                        if (!userData.role || userData.role === 'user') {
+                            console.warn('⚠️ Default role assigned. User may have limited access.');
                         }
+
+                        localStorage.setItem('dinky_user', JSON.stringify(userData));
                     }
 
-                    // Store session data in localStorage (for backward compatibility)
-                    const userData = {
-                        id: data.user.id,
-                        email: data.user.email,
-                        role: userRole,
-                        loginTime: new Date().toISOString()
-                    };
-
-                    localStorage.setItem('dinky_user', JSON.stringify(userData));
                     recordLoginAttempt(email, true);
 
                     // Redirect to main app
