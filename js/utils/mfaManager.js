@@ -1,5 +1,4 @@
 import { supabase } from '../services/supabaseClient.js';
-import QRCode from 'qrcode';
 
 export const mfaManager = {
     async enrollTOTP(friendlyName = 'Dinky Metal ERP') {
@@ -25,16 +24,10 @@ export const mfaManager = {
 
     async generateQRCode(otpauthUri) {
         try {
-            const qrCodeDataURL = await QRCode.toDataURL(otpauthUri, {
-                width: 300,
-                margin: 2,
-                color: {
-                    dark: '#000000',
-                    light: '#FFFFFF'
-                }
-            });
-
-            return qrCodeDataURL;
+            // Use the Supabase provided QR code or generate using Canvas API
+            // Since we can't use npm packages in browser, we'll use a CDN service
+            const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(otpauthUri)}`;
+            return qrApiUrl;
         } catch (error) {
             console.error('QR code generation error:', error);
             throw error;
