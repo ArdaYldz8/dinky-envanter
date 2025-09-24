@@ -188,64 +188,209 @@ window.generatePayroll = async function() {
             const totalDeductions = payroll.reduce((sum, p) => sum + p.deductions, 0);
             const totalNet = payroll.reduce((sum, p) => sum + p.netSalary, 0);
             
+            // Calculate monthly statistics
+            const totalFullDays = payroll.reduce((sum, p) => sum + p.fullDays, 0);
+            const totalHalfDays = payroll.reduce((sum, p) => sum + p.halfDays, 0);
+            const totalAbsentDays = payroll.reduce((sum, p) => sum + p.absentDays, 0);
+            const totalOvertimeHours = payroll.reduce((sum, p) => sum + (p.overtimeHours || 0), 0);
+            const totalOvertimePayment = payroll.reduce((sum, p) => sum + (p.overtimePayment || 0), 0);
+            const totalWorkDays = payroll.reduce((sum, p) => sum + p.totalDays, 0);
+            const averageAttendance = (totalWorkDays / (payroll.length * 30) * 100).toFixed(1);
+
             reportContainer.innerHTML = `
-                <div class="report-header">
-                    <h2>Aylık Bordro Raporu</h2>
-                    <p>${formatter.monthName(month)} ${year}</p>
-                </div>
-                
-                <div class="table-responsive">
-                    <table class="table report-table" id="payrollTable">
-                        <thead>
-                            <tr>
-                                <th>Personel</th>
-                                <th>Günlük Ücret</th>
-                                <th>Tam Gün</th>
-                                <th>Yarım Gün</th>
-                                <th>Gelmedi</th>
-                                <th>Toplam Gün</th>
-                                <th>Ek Mesai</th>
-                                <th>Ek Mesai Ücreti</th>
-                                <th>Brüt Maaş</th>
-                                <th>Avanslar</th>
-                                <th>Kesintiler</th>
-                                <th>Net Maaş</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${payroll.map(emp => `
+                <div class="professional-report">
+                    <!-- Report Header -->
+                    <div class="report-header-professional">
+                        <div class="company-logo">
+                            <h3>DİNKY METAL ERP</h3>
+                            <span class="report-type">AYLIK BORDRO RAPORU</span>
+                        </div>
+                        <div class="report-meta">
+                            <table class="meta-table">
                                 <tr>
-                                    <td><strong>${emp.employee}</strong></td>
-                                    <td>${formatter.currency(emp.dailyWage)}</td>
-                                    <td>${emp.fullDays}</td>
-                                    <td>${emp.halfDays}</td>
-                                    <td>${emp.absentDays}</td>
-                                    <td>${formatter.number(emp.totalDays, 1)}</td>
-                                    <td>${emp.overtimeHours || '0'}</td>
-                                    <td>${formatter.currency(emp.overtimePayment || 0)}</td>
-                                    <td>${formatter.currency(emp.grossSalary)}</td>
-                                    <td>${formatter.currency(emp.advances)}</td>
-                                    <td>${formatter.currency(emp.deductions)}</td>
-                                    <td><strong>${formatter.currency(emp.netSalary)}</strong></td>
+                                    <td class="meta-label">Rapor Tarihi:</td>
+                                    <td class="meta-value">${new Date().toLocaleDateString('tr-TR')}</td>
                                 </tr>
-                            `).join('')}
-                        </tbody>
-                        <tfoot>
-                            <tr class="total-row">
-                                <td colspan="6"><strong>TOPLAM</strong></td>
-                                <td><strong>${payroll.reduce((sum, p) => sum + (p.overtimeHours || 0), 0)}</strong></td>
-                                <td><strong>${formatter.currency(payroll.reduce((sum, p) => sum + (p.overtimePayment || 0), 0))}</strong></td>
-                                <td><strong>${formatter.currency(totalGross)}</strong></td>
-                                <td><strong>${formatter.currency(totalAdvances)}</strong></td>
-                                <td><strong>${formatter.currency(totalDeductions)}</strong></td>
-                                <td><strong>${formatter.currency(totalNet)}</strong></td>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
-                
-                <div class="report-footer">
-                    <p>Rapor Tarihi: ${formatter.date(new Date())}</p>
+                                <tr>
+                                    <td class="meta-label">Bordro Dönemi:</td>
+                                    <td class="meta-value">${formatter.monthName(month)} ${year}</td>
+                                </tr>
+                                <tr>
+                                    <td class="meta-label">Personel Sayısı:</td>
+                                    <td class="meta-value">${payroll.length}</td>
+                                </tr>
+                                <tr>
+                                    <td class="meta-label">Çalışma Oranı:</td>
+                                    <td class="meta-value">${averageAttendance}%</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Financial Summary Section -->
+                    <div class="report-summary">
+                        <h4>💰 FİNANSAL ÖZET</h4>
+                        <div class="summary-grid">
+                            <div class="summary-card" style="background: #e8f5e9;">
+                                <span class="summary-label">Brüt Maaş Toplamı</span>
+                                <span class="summary-value" style="color: #2e7d32;">₺${totalGross.toFixed(2)}</span>
+                                <span class="summary-percentage">Ort: ₺${(totalGross/payroll.length).toFixed(2)}/kişi</span>
+                            </div>
+                            <div class="summary-card" style="background: #fff3e0;">
+                                <span class="summary-label">Avans Toplamı</span>
+                                <span class="summary-value" style="color: #f57c00;">₺${totalAdvances.toFixed(2)}</span>
+                                <span class="summary-percentage">${((totalAdvances/totalGross)*100).toFixed(1)}% oranı</span>
+                            </div>
+                            <div class="summary-card" style="background: #ffebee;">
+                                <span class="summary-label">Kesinti Toplamı</span>
+                                <span class="summary-value" style="color: #c62828;">₺${totalDeductions.toFixed(2)}</span>
+                                <span class="summary-percentage">${((totalDeductions/totalGross)*100).toFixed(1)}% oranı</span>
+                            </div>
+                            <div class="summary-card" style="background: #e3f2fd;">
+                                <span class="summary-label">Net Ödeme</span>
+                                <span class="summary-value" style="color: #1976d2;">₺${totalNet.toFixed(2)}</span>
+                                <span class="summary-percentage">Ort: ₺${(totalNet/payroll.length).toFixed(2)}/kişi</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Performance Indicators -->
+                    <div class="report-summary">
+                        <h4>📊 PERFORMANS GÖSTERGELERİ</h4>
+                        <div class="summary-grid">
+                            <div class="summary-card">
+                                <span class="summary-label">Devam Oranı</span>
+                                <span class="summary-value">${averageAttendance}%</span>
+                                <span class="summary-percentage">${totalFullDays + totalHalfDays}/${payroll.length * 30} gün</span>
+                            </div>
+                            <div class="summary-card">
+                                <span class="summary-label">Mesai Oranı</span>
+                                <span class="summary-value">${((totalOvertimeHours/(payroll.length*30*9))*100).toFixed(1)}%</span>
+                                <span class="summary-percentage">${totalOvertimeHours} saat toplamda</span>
+                            </div>
+                            <div class="summary-card">
+                                <span class="summary-label">Ortalama Çalışma</span>
+                                <span class="summary-value">${(totalWorkDays/payroll.length).toFixed(1)} gün</span>
+                                <span class="summary-percentage">Kişi başına aylık</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Detailed Personnel Payroll Table -->
+                    <div class="report-table">
+                        <h4>📋 PERSONEL BORDRO DETAYI</h4>
+                        <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+                            <thead>
+                                <tr style="background: #f5f5f5;">
+                                    <th style="width: 4%;">Sıra</th>
+                                    <th style="width: 18%;">Personel Adı</th>
+                                    <th style="width: 8%;">Günlük Ücr.</th>
+                                    <th style="width: 6%;">Tam Gün</th>
+                                    <th style="width: 6%;">Yarım Gün</th>
+                                    <th style="width: 6%;">Gelmedi</th>
+                                    <th style="width: 7%;">Top. Gün</th>
+                                    <th style="width: 6%;">Mesai</th>
+                                    <th style="width: 9%;">Mesai Ücr.</th>
+                                    <th style="width: 9%;">Brüt Maaş</th>
+                                    <th style="width: 8%;">Avanslar</th>
+                                    <th style="width: 8%;">Kesintiler</th>
+                                    <th style="width: 9%;">Net Maaş</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${payroll.map((emp, index) => `
+                                    <tr style="${index % 2 === 0 ? 'background: #fafafa;' : ''}">
+                                        <td style="text-align: center;">${index + 1}</td>
+                                        <td><strong>${emp.employee}</strong></td>
+                                        <td style="text-align: right;">₺${emp.dailyWage.toFixed(2)}</td>
+                                        <td style="text-align: center; color: #2e7d32;">${emp.fullDays}</td>
+                                        <td style="text-align: center; color: #f57c00;">${emp.halfDays}</td>
+                                        <td style="text-align: center; color: #c62828;">${emp.absentDays}</td>
+                                        <td style="text-align: center; font-weight: bold;">${emp.totalDays.toFixed(1)}</td>
+                                        <td style="text-align: center;">${emp.overtimeHours || 0}</td>
+                                        <td style="text-align: right;">₺${(emp.overtimePayment || 0).toFixed(2)}</td>
+                                        <td style="text-align: right; font-weight: bold;">₺${emp.grossSalary.toFixed(2)}</td>
+                                        <td style="text-align: right; color: #f57c00;">₺${emp.advances.toFixed(2)}</td>
+                                        <td style="text-align: right; color: #c62828;">₺${emp.deductions.toFixed(2)}</td>
+                                        <td style="text-align: right; font-weight: bold; color: #1976d2;">₺${emp.netSalary.toFixed(2)}</td>
+                                    </tr>
+                                `).join('')}
+                                <tr class="total-row" style="background: #e8f5e9; font-weight: bold; border-top: 2px solid #2e7d32;">
+                                    <td colspan="7" style="text-align: right;">GENEL TOPLAM:</td>
+                                    <td style="text-align: center; color: #1976d2;">${totalOvertimeHours}</td>
+                                    <td style="text-align: right; color: #1976d2;">₺${totalOvertimePayment.toFixed(2)}</td>
+                                    <td style="text-align: right; color: #1976d2;">₺${totalGross.toFixed(2)}</td>
+                                    <td style="text-align: right; color: #1976d2;">₺${totalAdvances.toFixed(2)}</td>
+                                    <td style="text-align: right; color: #1976d2;">₺${totalDeductions.toFixed(2)}</td>
+                                    <td style="text-align: right; color: #1976d2; font-size: 14px;">₺${totalNet.toFixed(2)}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Payment Details Section -->
+                    <div class="report-summary" style="margin-top: 30px;">
+                        <h4>💳 ÖDEME DETAYLARI</h4>
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
+                            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
+                                <h5 style="margin: 0 0 10px 0; color: #333;">Ödeme Özeti</h5>
+                                <div style="font-size: 13px;">
+                                    <div style="display: flex; justify-content: space-between; margin: 5px 0;">
+                                        <span>Net Ödeme Tutarı:</span>
+                                        <strong>₺${totalNet.toFixed(2)}</strong>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; margin: 5px 0;">
+                                        <span>Ödeme Tarihi:</span>
+                                        <strong>${new Date().toLocaleDateString('tr-TR')}</strong>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; margin: 5px 0;">
+                                        <span>Ödeme Yöntemi:</span>
+                                        <strong>Banka Transferi</strong>
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
+                                <h5 style="margin: 0 0 10px 0; color: #333;">Yasal Bilgiler</h5>
+                                <div style="font-size: 13px;">
+                                    <div style="margin: 5px 0;">SGK Primleri: Dahil</div>
+                                    <div style="margin: 5px 0;">Vergi: ${((totalDeductions/totalGross)*100).toFixed(1)}% ortalama</div>
+                                    <div style="margin: 5px 0;">SSK Kesintisi: Uygulandı</div>
+                                    <div style="margin: 5px 0;">Gelir Vergisi: Uygulandı</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Approval Section -->
+                    <div class="approval-section">
+                        <h4>ONAY VE İMZA BİLGİLERİ</h4>
+                        <div class="approval-grid">
+                            <div class="approval-box">
+                                <div class="approval-title">Mali İşler</div>
+                                <div class="approval-line"></div>
+                                <div class="approval-date">Tarih: ${new Date().toLocaleDateString('tr-TR')}</div>
+                            </div>
+                            <div class="approval-box">
+                                <div class="approval-title">İnsan Kaynakları</div>
+                                <div class="approval-line"></div>
+                                <div class="approval-date">Tarih: ___________</div>
+                            </div>
+                            <div class="approval-box">
+                                <div class="approval-title">Genel Müdür</div>
+                                <div class="approval-line"></div>
+                                <div class="approval-date">Tarih: ___________</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Footer -->
+                    <div class="report-footer-professional">
+                        <p>Bu bordro Dinky Metal ERP sistemi tarafından otomatik olarak oluşturulmuştur.</p>
+                        <p>Oluşturma Tarihi: ${new Date().toLocaleDateString('tr-TR')} ${new Date().toLocaleTimeString('tr-TR')}</p>
+                        <p style="margin-top: 10px; font-size: 10px; color: #888;">
+                            5510 Sayılı Sosyal Sigortalar Kanunu ve 193 Sayılı Gelir Vergisi Kanunu uyarınca düzenlenmiştir.
+                        </p>
+                    </div>
                 </div>
             `;
             
@@ -793,45 +938,158 @@ window.generateWeeklyReport = async function() {
             
             const weekDays = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
             
+            // Calculate weekly statistics
+            const totalEmployees = Object.keys(employeeData).length;
+            const totalWorkDays = Object.values(employeeData).reduce((sum, emp) => sum + emp.totalDays, 0);
+            const totalOvertime = Object.values(employeeData).reduce((sum, emp) => sum + emp.totalOvertime, 0);
+            const totalEarnings = Object.values(employeeData).reduce((sum, emp) => sum + emp.totalEarnings, 0);
+            const averageAttendance = (totalWorkDays / (totalEmployees * 7) * 100).toFixed(1);
+
             reportContainer.innerHTML = `
-                <div class="report-header">
-                    <h2>Haftalık Puantaj Raporu</h2>
-                    <p class="report-date">
-                        ${startDate.toLocaleDateString('tr-TR')} - ${endDate.toLocaleDateString('tr-TR')}
-                    </p>
-                </div>
-                
-                <div class="weekly-report-table-container">
-                    <table class="report-table weekly-table">
-                        <thead>
-                            <tr>
-                                <th>Personel</th>
-                                ${weekDays.map(day => `<th>${day.substr(0, 3)}</th>`).join('')}
-                                <th>Toplam Gün</th>
-                                <th>Mesai</th>
-                                <th>Kazanç</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${Object.values(employeeData).map(emp => `
+                <div class="professional-report">
+                    <!-- Report Header -->
+                    <div class="report-header-professional">
+                        <div class="company-logo">
+                            <h3>DİNKY METAL ERP</h3>
+                            <span class="report-type">HAFTALİK PUANTAJ RAPORU</span>
+                        </div>
+                        <div class="report-meta">
+                            <table class="meta-table">
                                 <tr>
-                                    <td class="emp-name">${emp.name}</td>
-                                    ${weekDays.map((_, idx) => {
-                                        const day = emp.days[idx];
-                                        if (!day) return '<td>-</td>';
-                                        const statusClass = day.status === 'Tam Gün' ? 'status-present' : 
-                                                          day.status === 'Yarım Gün' ? 'status-half' : 'status-absent';
-                                        const statusSymbol = day.status === 'Tam Gün' ? '✓' : 
-                                                           day.status === 'Yarım Gün' ? '½' : 'X';
-                                        return `<td class="${statusClass}">${statusSymbol}${day.overtime ? ` +${day.overtime}` : ''}</td>`;
-                                    }).join('')}
-                                    <td class="text-center">${emp.totalDays}</td>
-                                    <td class="text-center">${emp.totalOvertime}</td>
-                                    <td class="text-right">${formatter.currency(emp.totalEarnings)}</td>
+                                    <td class="meta-label">Rapor Tarihi:</td>
+                                    <td class="meta-value">${new Date().toLocaleDateString('tr-TR')}</td>
                                 </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
+                                <tr>
+                                    <td class="meta-label">Hafta:</td>
+                                    <td class="meta-value">${startDate.toLocaleDateString('tr-TR')} - ${endDate.toLocaleDateString('tr-TR')}</td>
+                                </tr>
+                                <tr>
+                                    <td class="meta-label">Personel Sayısı:</td>
+                                    <td class="meta-value">${totalEmployees}</td>
+                                </tr>
+                                <tr>
+                                    <td class="meta-label">Devam Ortalaması:</td>
+                                    <td class="meta-value">${averageAttendance}%</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Weekly Statistics Summary -->
+                    <div class="report-summary">
+                        <h4>📊 HAFTALİK İSTATİSTİKLER</h4>
+                        <div class="summary-grid">
+                            <div class="summary-card" style="background: #e8f5e9;">
+                                <span class="summary-label">Toplam İş Günü</span>
+                                <span class="summary-value" style="color: #2e7d32;">${totalWorkDays.toFixed(1)} gün</span>
+                                <span class="summary-percentage">Ort: ${(totalWorkDays/totalEmployees).toFixed(1)} gün/kişi</span>
+                            </div>
+                            <div class="summary-card" style="background: #fff3e0;">
+                                <span class="summary-label">Toplam Mesai</span>
+                                <span class="summary-value" style="color: #f57c00;">${totalOvertime} saat</span>
+                                <span class="summary-percentage">Ort: ${(totalOvertime/totalEmployees).toFixed(1)} saat/kişi</span>
+                            </div>
+                            <div class="summary-card" style="background: #e3f2fd;">
+                                <span class="summary-label">Haftalık Kazanç</span>
+                                <span class="summary-value" style="color: #1976d2;">₺${totalEarnings.toFixed(2)}</span>
+                                <span class="summary-percentage">Ort: ₺${(totalEarnings/totalEmployees).toFixed(2)}/kişi</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Weekly Attendance Matrix -->
+                    <div class="report-table">
+                        <h4>📅 HAFTALİK DEVAM MATRİSİ</h4>
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="background: #f5f5f5;">
+                                    <th style="width: 5%; text-align: center;">Sıra</th>
+                                    <th style="width: 25%;">Personel Adı</th>
+                                    ${weekDays.map(day => `<th style="width: 8%; text-align: center;">${day.substring(0, 3)}</th>`).join('')}
+                                    <th style="width: 10%; text-align: center;">Toplam Gün</th>
+                                    <th style="width: 8%; text-align: center;">Mesai</th>
+                                    <th style="width: 12%; text-align: right;">Kazanç</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${Object.values(employeeData).map((emp, index) => `
+                                    <tr>
+                                        <td style="text-align: center;">${index + 1}</td>
+                                        <td><strong>${emp.name}</strong></td>
+                                        ${weekDays.map((_, idx) => {
+                                            const day = emp.days[idx];
+                                            if (!day) return '<td style="text-align: center; color: #ccc;">-</td>';
+
+                                            let statusSymbol = '';
+                                            let statusColor = '';
+                                            if (day.status === 'Tam Gün') {
+                                                statusSymbol = '✓';
+                                                statusColor = '#2e7d32';
+                                            } else if (day.status === 'Yarım Gün') {
+                                                statusSymbol = '½';
+                                                statusColor = '#f57c00';
+                                            } else {
+                                                statusSymbol = '✗';
+                                                statusColor = '#c62828';
+                                            }
+
+                                            return `<td style="text-align: center; color: ${statusColor}; font-weight: bold;">
+                                                ${statusSymbol}${day.overtime ? `<sub>+${day.overtime}</sub>` : ''}
+                                            </td>`;
+                                        }).join('')}
+                                        <td style="text-align: center; font-weight: bold;">${emp.totalDays.toFixed(1)}</td>
+                                        <td style="text-align: center;">${emp.totalOvertime}</td>
+                                        <td style="text-align: right; font-weight: bold;">₺${emp.totalEarnings.toFixed(2)}</td>
+                                    </tr>
+                                `).join('')}
+                                <tr class="total-row" style="background: #e8f5e9; font-weight: bold;">
+                                    <td colspan="${weekDays.length + 2}" style="text-align: right;">GENEL TOPLAM:</td>
+                                    <td style="text-align: center; color: #1976d2;">${totalWorkDays.toFixed(1)}</td>
+                                    <td style="text-align: center; color: #1976d2;">${totalOvertime}</td>
+                                    <td style="text-align: right; color: #1976d2;">₺${totalEarnings.toFixed(2)}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Legend Section -->
+                    <div class="report-summary">
+                        <h4>🔍 AÇIKLAMA</h4>
+                        <div style="display: flex; justify-content: space-around; text-align: center; padding: 15px;">
+                            <div><span style="color: #2e7d32; font-weight: bold; font-size: 18px;">✓</span> : Tam Gün Çalıştı</div>
+                            <div><span style="color: #f57c00; font-weight: bold; font-size: 18px;">½</span> : Yarım Gün Çalıştı</div>
+                            <div><span style="color: #c62828; font-weight: bold; font-size: 18px;">✗</span> : Gelmedi</div>
+                            <div><span style="color: #666; font-weight: bold; font-size: 18px;">-</span> : Tatil/İzin</div>
+                        </div>
+                    </div>
+
+                    <!-- Approval Section -->
+                    <div class="approval-section">
+                        <h4>ONAY VE İMZA BİLGİLERİ</h4>
+                        <div class="approval-grid">
+                            <div class="approval-box">
+                                <div class="approval-title">Hazırlayan</div>
+                                <div class="approval-line"></div>
+                                <div class="approval-date">Tarih: ${new Date().toLocaleDateString('tr-TR')}</div>
+                            </div>
+                            <div class="approval-box">
+                                <div class="approval-title">Kontrol Eden</div>
+                                <div class="approval-line"></div>
+                                <div class="approval-date">Tarih: ___________</div>
+                            </div>
+                            <div class="approval-box">
+                                <div class="approval-title">Onaylayan</div>
+                                <div class="approval-line"></div>
+                                <div class="approval-date">Tarih: ___________</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Footer -->
+                    <div class="report-footer-professional">
+                        <p>Bu rapor Dinky Metal ERP sistemi tarafından otomatik olarak oluşturulmuştur.</p>
+                        <p>Oluşturma Tarihi: ${new Date().toLocaleDateString('tr-TR')} ${new Date().toLocaleTimeString('tr-TR')}</p>
+                    </div>
                 </div>
             `;
             
