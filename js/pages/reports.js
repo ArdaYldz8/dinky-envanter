@@ -282,32 +282,161 @@ window.generatePayroll = async function() {
 
 window.exportPayroll = function() {
     if (!window.currentPayrollData) return;
-    
+
+    if (typeof XLSX === 'undefined') {
+        Toast.error('Excel kütüphanesi yüklenmedi. Sayfayı yenileyin.');
+        return;
+    }
+
     const { month, year, data } = window.currentPayrollData;
-    
-    // Create CSV content
-    let csv = 'Personel,Günlük Ücret,Tam Gün,Yarım Gün,Gelmedi,Toplam Gün,Brüt Maaş,Avanslar,Kesintiler,Net Maaş\n';
-    
-    data.forEach(emp => {
-        csv += `"${emp.employee}",${emp.dailyWage},${emp.fullDays},${emp.halfDays},${emp.absentDays},${emp.totalDays},${emp.grossSalary},${emp.advances},${emp.deductions},${emp.netSalary}\n`;
-    });
-    
-    // Add totals
+    const reportDate = new Date().toLocaleDateString('tr-TR');
+    const reportTime = new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+    const monthName = formatter.monthName(month);
+
+    // Create new workbook
+    const wb = XLSX.utils.book_new();
+    const wsData = [];
+
+    // Add company header
+    wsData.push(['DİNKY METAL ERP']);
+    wsData.push(['AYLIK BORDRO RAPORU']);
+    wsData.push(['']);
+
+    // Report Information
+    wsData.push(['RAPOR BİLGİLERİ', '', '', '', '', '', '', '', '', '', '', '']);
+    wsData.push(['Bordro Dönemi:', `${monthName} ${year}`, '', '', 'Rapor Tarihi:', reportDate, '', 'Rapor Saati:', reportTime]);
+    wsData.push(['Personel Sayısı:', data.length, '', '', 'Sistem:', 'Dinky Metal ERP v1.0']);
+    wsData.push(['']);
+
+    // Calculate summary statistics
     const totalGross = data.reduce((sum, p) => sum + p.grossSalary, 0);
     const totalAdvances = data.reduce((sum, p) => sum + p.advances, 0);
     const totalDeductions = data.reduce((sum, p) => sum + p.deductions, 0);
     const totalNet = data.reduce((sum, p) => sum + p.netSalary, 0);
-    
-    csv += `"TOPLAM","","","","","",${totalGross},${totalAdvances},${totalDeductions},${totalNet}\n`;
-    
-    // Download CSV
-    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `Bordro_${month}_${year}.csv`;
-    link.click();
-    
-    Toast.success('Bordro raporu Excel formatında indirildi');
+    const totalOvertime = data.reduce((sum, p) => sum + (p.overtimeHours || 0), 0);
+    const totalOvertimePayment = data.reduce((sum, p) => sum + (p.overtimePayment || 0), 0);
+    const totalFullDays = data.reduce((sum, p) => sum + p.fullDays, 0);
+    const totalHalfDays = data.reduce((sum, p) => sum + p.halfDays, 0);
+    const totalAbsentDays = data.reduce((sum, p) => sum + p.absentDays, 0);
+    const totalWorkDays = data.reduce((sum, p) => sum + p.totalDays, 0);
+
+    // Financial Summary Section
+    wsData.push(['MALİ ÖZET', '', '', '', '', '', '', '', '', '', '', '']);
+    wsData.push(['Açıklama', 'Tutar (₺)', '', 'İstatistik', 'Değer']);
+    wsData.push(['Brüt Maaş Toplamı:', totalGross.toFixed(2), '', 'Toplam Tam Gün:', totalFullDays]);
+    wsData.push(['Avans Toplamı:', totalAdvances.toFixed(2), '', 'Toplam Yarım Gün:', totalHalfDays]);
+    wsData.push(['Kesinti Toplamı:', totalDeductions.toFixed(2), '', 'Toplam Gelmedi:', totalAbsentDays]);
+    wsData.push(['Mesai Ücreti Toplamı:', totalOvertimePayment.toFixed(2), '', 'Toplam Çalışılan Gün:', totalWorkDays.toFixed(1)]);
+    wsData.push(['NET MAAŞ TOPLAMI:', totalNet.toFixed(2), '', 'Toplam Mesai Saati:', totalOvertime]);
+    wsData.push(['']);
+
+    // Personnel performance indicators
+    wsData.push(['PERFORMANS GÖSTERGELERİ', '', '', '', '', '', '', '', '', '', '', '']);
+    wsData.push(['Gösterge', 'Değer']);
+    wsData.push(['Ortalama Brüt Maaş:', `₺${(totalGross / data.length).toFixed(2)}`]);
+    wsData.push(['Ortalama Net Maaş:', `₺${(totalNet / data.length).toFixed(2)}`]);
+    wsData.push(['Devam Oranı:', `${((totalFullDays / (totalFullDays + totalAbsentDays)) * 100).toFixed(1)}%`]);
+    wsData.push(['Mesai Oranı:', `${((totalOvertime / (data.length * 22 * 9)) * 100).toFixed(1)}%`]);
+    wsData.push(['']);
+    wsData.push(['']);
+
+    // Personnel Details Header
+    wsData.push(['PERSONEL BORDRO DETAYI']);
+    wsData.push([
+        'Sıra', 'Personel Adı', 'Günlük Ücret (₺)',
+        'Tam Gün', 'Yarım Gün', 'Gelmedi', 'Toplam Gün',
+        'Mesai (Saat)', 'Mesai Ücreti (₺)',
+        'Brüt Maaş (₺)', 'Avanslar (₺)', 'Kesintiler (₺)', 'Net Maaş (₺)'
+    ]);
+
+    // Add personnel data
+    let rowNumber = 1;
+    data.forEach(emp => {
+        wsData.push([
+            rowNumber,
+            emp.employee,
+            emp.dailyWage.toFixed(2),
+            emp.fullDays,
+            emp.halfDays,
+            emp.absentDays,
+            emp.totalDays.toFixed(1),
+            emp.overtimeHours || 0,
+            (emp.overtimePayment || 0).toFixed(2),
+            emp.grossSalary.toFixed(2),
+            emp.advances.toFixed(2),
+            emp.deductions.toFixed(2),
+            emp.netSalary.toFixed(2)
+        ]);
+        rowNumber++;
+    });
+
+    // Add total row
+    wsData.push([
+        '', 'GENEL TOPLAM', '',
+        totalFullDays, totalHalfDays, totalAbsentDays, totalWorkDays.toFixed(1),
+        totalOvertime, totalOvertimePayment.toFixed(2),
+        totalGross.toFixed(2), totalAdvances.toFixed(2),
+        totalDeductions.toFixed(2), totalNet.toFixed(2)
+    ]);
+
+    wsData.push(['']);
+    wsData.push(['']);
+
+    // Payment Details Section
+    wsData.push(['ÖDEME DETAYLARI', '', '', '', '', '', '', '', '', '', '', '']);
+    wsData.push(['Ödeme Yöntemi:', 'Banka Havalesi / EFT']);
+    wsData.push(['Ödeme Tarihi:', '___________']);
+    wsData.push(['Ödeme Onay No:', '___________']);
+    wsData.push(['']);
+
+    // Legal Information
+    wsData.push(['YASAL BİLGİLENDİRME', '', '', '', '', '', '', '', '', '', '', '']);
+    wsData.push(['SGK Primi İşveren Payı:', '___________', '', 'SGK Primi İşçi Payı:', '___________']);
+    wsData.push(['İşsizlik Sigortası İşveren:', '___________', '', 'İşsizlik Sigortası İşçi:', '___________']);
+    wsData.push(['Gelir Vergisi:', '___________', '', 'Damga Vergisi:', '___________']);
+    wsData.push(['']);
+
+    // Approval Section
+    wsData.push(['ONAY VE İMZA BİLGİLERİ']);
+    wsData.push(['Muhasebe Müdürü:', '___________________', 'Tarih:', '___________', 'İmza:', '___________________']);
+    wsData.push(['İnsan Kaynakları:', '___________________', 'Tarih:', '___________', 'İmza:', '___________________']);
+    wsData.push(['Genel Müdür:', '___________________', 'Tarih:', '___________', 'İmza:', '___________________']);
+    wsData.push(['']);
+    wsData.push(['Bu bordro Dinky Metal ERP sistemi tarafından otomatik olarak oluşturulmuştur.']);
+    wsData.push([`Oluşturma Tarihi: ${reportDate} ${reportTime}`]);
+    wsData.push(['']);
+    wsData.push(['NOT: Bu belge elektronik olarak imzalanmıştır ve 5070 sayılı Elektronik İmza Kanunu kapsamında geçerlidir.']);
+
+    // Create worksheet from data
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+    // Set column widths
+    ws['!cols'] = [
+        {wch: 5},   // Sıra
+        {wch: 20},  // Personel Adı
+        {wch: 12},  // Günlük Ücret
+        {wch: 8},   // Tam Gün
+        {wch: 8},   // Yarım Gün
+        {wch: 8},   // Gelmedi
+        {wch: 10},  // Toplam Gün
+        {wch: 10},  // Mesai Saat
+        {wch: 12},  // Mesai Ücreti
+        {wch: 12},  // Brüt Maaş
+        {wch: 12},  // Avanslar
+        {wch: 12},  // Kesintiler
+        {wch: 12}   // Net Maaş
+    ];
+
+    // Add worksheet to workbook
+    XLSX.utils.book_append_sheet(wb, ws, 'Aylık Bordro');
+
+    // Generate file name
+    const fileName = `Dinky_Metal_Bordro_${monthName}_${year}.xlsx`;
+
+    // Write and download the file
+    XLSX.writeFile(wb, fileName);
+
+    Toast.success('Profesyonel bordro raporu (.xlsx) başarıyla indirildi!');
 };
 
 window.printPayroll = function() {
@@ -871,25 +1000,148 @@ window.exportDailyReport = function() {
 
 window.exportWeeklyReport = function() {
     if (!window.currentWeeklyReportData) return;
-    
+
+    if (typeof XLSX === 'undefined') {
+        Toast.error('Excel kütüphanesi yüklenmedi. Sayfayı yenileyin.');
+        return;
+    }
+
     const { startDate, endDate, data } = window.currentWeeklyReportData;
-    
-    let csv = 'Personel,Pazartesi,Salı,Çarşamba,Perşembe,Cuma,Cumartesi,Pazar,Toplam Gün,Mesai,Kazanç\n';
+    const reportDate = new Date().toLocaleDateString('tr-TR');
+    const reportTime = new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+
+    // Create new workbook
+    const wb = XLSX.utils.book_new();
+    const wsData = [];
+
+    // Add company header
+    wsData.push(['DİNKY METAL ERP']);
+    wsData.push(['HAFTALIK PUANTAJ RAPORU']);
+    wsData.push(['']);
+
+    // Report Information
+    wsData.push(['RAPOR BİLGİLERİ', '', '', '', '', '', '', '', '', '', '']);
+    wsData.push(['Dönem:', `${new Date(startDate).toLocaleDateString('tr-TR')} - ${new Date(endDate).toLocaleDateString('tr-TR')}`, '', '', 'Rapor Tarihi:', reportDate, '', 'Rapor Saati:', reportTime]);
+    wsData.push(['Toplam Personel:', Object.keys(data).length, '', '', 'Sistem:', 'Dinky Metal ERP v1.0']);
+    wsData.push(['']);
+
+    // Calculate weekly statistics
+    let totalWorkDays = 0;
+    let totalOvertimeHours = 0;
+    let totalEarnings = 0;
+    let weeklyAttendance = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 0: 0 };
+
     Object.values(data).forEach(emp => {
-        const days = [];
+        totalWorkDays += emp.totalDays;
+        totalOvertimeHours += emp.totalOvertime;
+        totalEarnings += emp.totalEarnings;
+
+        Object.entries(emp.days).forEach(([day, info]) => {
+            if (info && info.status === 'Tam Gün') {
+                weeklyAttendance[day]++;
+            }
+        });
+    });
+
+    // Weekly Summary Section
+    wsData.push(['HAFTALIK ÖZET', '', '', '', '', '', '', '', '', '', '']);
+    wsData.push(['İstatistik', 'Değer', '', 'Gün', 'Çalışan Sayısı']);
+    wsData.push(['Toplam Çalışma Günü:', totalWorkDays.toFixed(1), '', 'Pazartesi:', weeklyAttendance[1]]);
+    wsData.push(['Toplam Mesai Saati:', totalOvertimeHours, '', 'Salı:', weeklyAttendance[2]]);
+    wsData.push(['Toplam Kazanç:', `₺${totalEarnings.toFixed(2)}`, '', 'Çarşamba:', weeklyAttendance[3]]);
+    wsData.push(['Ortalama Günlük Çalışan:', (totalWorkDays / 7).toFixed(1), '', 'Perşembe:', weeklyAttendance[4]]);
+    wsData.push(['Ortalama Günlük Maliyet:', `₺${(totalEarnings / 7).toFixed(2)}`, '', 'Cuma:', weeklyAttendance[5]]);
+    wsData.push(['', '', '', 'Cumartesi:', weeklyAttendance[6]]);
+    wsData.push(['', '', '', 'Pazar:', weeklyAttendance[0]]);
+    wsData.push(['']);
+    wsData.push(['']);
+
+    // Personnel Details Header
+    wsData.push(['PERSONEL HAFTALIK DETAY']);
+    const dayNames = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
+    wsData.push(['Sıra', 'Personel Adı', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar', 'Toplam Gün', 'Mesai (Saat)', 'Haftalık Kazanç (₺)']);
+
+    // Add personnel data
+    let rowNumber = 1;
+    Object.values(data).forEach(emp => {
+        const row = [rowNumber, emp.name];
+
+        // Add each day of the week (Monday to Sunday)
         for (let i = 1; i <= 7; i++) {
             const dayIdx = i % 7;
             const day = emp.days[dayIdx];
-            days.push(day ? day.status : '-');
+            if (day) {
+                if (day.status === 'Tam Gün') row.push('✓');
+                else if (day.status === 'Yarım Gün') row.push('½');
+                else if (day.status === 'Gelmedi') row.push('✗');
+                else row.push(day.status);
+            } else {
+                row.push('-');
+            }
         }
-        csv += `"${emp.name}",${days.join(',')},${emp.totalDays},${emp.totalOvertime},${emp.totalEarnings}\n`;
+
+        row.push(emp.totalDays.toFixed(1));
+        row.push(emp.totalOvertime);
+        row.push(emp.totalEarnings.toFixed(2));
+
+        wsData.push(row);
+        rowNumber++;
     });
-    
-    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `haftalik_rapor_${startDate}_${endDate}.csv`;
-    link.click();
+
+    // Add total row
+    wsData.push([
+        '', 'GENEL TOPLAM', '', '', '', '', '', '', '',
+        totalWorkDays.toFixed(1),
+        totalOvertimeHours,
+        totalEarnings.toFixed(2)
+    ]);
+
+    wsData.push(['']);
+    wsData.push(['']);
+
+    // Legend Section
+    wsData.push(['AÇIKLAMA']);
+    wsData.push(['✓ : Tam Gün Çalıştı', '', '½ : Yarım Gün Çalıştı', '', '✗ : Gelmedi', '', '- : Tatil/İzin']);
+    wsData.push(['']);
+
+    // Approval Section
+    wsData.push(['ONAY VE İMZA BİLGİLERİ']);
+    wsData.push(['Hazırlayan:', '___________________', 'Tarih:', reportDate, '', 'İmza:', '___________________']);
+    wsData.push(['Kontrol Eden:', '___________________', 'Tarih:', '___________', '', 'İmza:', '___________________']);
+    wsData.push(['Onaylayan:', '___________________', 'Tarih:', '___________', '', 'İmza:', '___________________']);
+    wsData.push(['']);
+    wsData.push(['Bu rapor Dinky Metal ERP sistemi tarafından otomatik olarak oluşturulmuştur.']);
+    wsData.push([`Oluşturma Tarihi: ${reportDate} ${reportTime}`]);
+
+    // Create worksheet from data
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+    // Set column widths
+    ws['!cols'] = [
+        {wch: 5},   // Sıra
+        {wch: 20},  // Personel Adı
+        {wch: 10},  // Pazartesi
+        {wch: 10},  // Salı
+        {wch: 10},  // Çarşamba
+        {wch: 10},  // Perşembe
+        {wch: 10},  // Cuma
+        {wch: 10},  // Cumartesi
+        {wch: 10},  // Pazar
+        {wch: 12},  // Toplam Gün
+        {wch: 12},  // Mesai
+        {wch: 18}   // Kazanç
+    ];
+
+    // Add worksheet to workbook
+    XLSX.utils.book_append_sheet(wb, ws, 'Haftalık Puantaj');
+
+    // Generate file name
+    const fileName = `Dinky_Metal_Haftalik_Puantaj_${startDate}_${endDate}.xlsx`;
+
+    // Write and download the file
+    XLSX.writeFile(wb, fileName);
+
+    Toast.success('Profesyonel haftalık rapor (.xlsx) başarıyla indirildi!');
 };
 
 window.printDailyReport = function() {
