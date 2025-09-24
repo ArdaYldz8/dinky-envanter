@@ -349,6 +349,11 @@
                     // Decode JWT to get user_role claim
                     const jwt = data.session.access_token;
                     const payload = JSON.parse(atob(jwt.split('.')[1]));
+
+                    // DEBUG: JWT içeriğini göster
+                    console.log('🔍 JWT Payload:', payload);
+                    console.log('🔍 user_role claim:', payload.user_role);
+
                     const userRole = payload.user_role;
 
                     if (!userRole || userRole === 'null') {
