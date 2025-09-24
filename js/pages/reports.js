@@ -743,36 +743,88 @@ window.exportDailyReport = function() {
     if (!window.currentDailyReportData) return;
 
     const { date, data, summary } = window.currentDailyReportData;
+    const formattedDate = new Date(date + 'T12:00:00').toLocaleDateString('tr-TR');
+    const reportDate = new Date().toLocaleDateString('tr-TR');
+    const reportTime = new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
 
-    let csv = 'DİNKY METAL ERP - GÜNLÜK PUANTAJ RAPORU\n';
-    csv += `Tarih: ${new Date(date + 'T12:00:00').toLocaleDateString('tr-TR')}\n`;
-    csv += `Rapor Tarihi: ${new Date().toLocaleDateString('tr-TR')}\n\n`;
+    // Professional Excel CSV Format with proper sections
+    let csv = '';
 
+    // Header Section
+    csv += '═══════════════════════════════════════════════════════════════════════\n';
+    csv += ',DİNKY METAL ERP - GÜNLÜK PUANTAJ RAPORU\n';
+    csv += '═══════════════════════════════════════════════════════════════════════\n';
+    csv += '\n';
+
+    // Report Info Section
+    csv += 'RAPOR BİLGİLERİ\n';
+    csv += '───────────────────────────────────────────────────────────────────────\n';
+    csv += 'Çalışma Tarihi:,' + formattedDate + '\n';
+    csv += 'Rapor Tarihi:,' + reportDate + '\n';
+    csv += 'Rapor Saati:,' + reportTime + '\n';
+    csv += 'Toplam Kayıt:,' + data.length + ' Personel\n';
+    csv += '\n';
+
+    // Summary Statistics Section
     csv += 'DEVAM DURUMU ÖZETİ\n';
-    csv += `Toplam Personel,Tam Gün,Yarım Gün,Gelmedi,Toplam Mesai (Saat)\n`;
-    csv += `${data.length},${summary.totalPresent},${summary.totalHalfDay},${summary.totalAbsent},${summary.totalOvertime}\n\n`;
+    csv += '───────────────────────────────────────────────────────────────────────\n';
+    csv += 'Durum,Personel Sayısı,Yüzde (%)\n';
+    csv += `Tam Gün Çalışan,${summary.totalPresent},${((summary.totalPresent/data.length)*100).toFixed(1)}%\n`;
+    csv += `Yarım Gün Çalışan,${summary.totalHalfDay},${((summary.totalHalfDay/data.length)*100).toFixed(1)}%\n`;
+    csv += `Gelmedi,${summary.totalAbsent},${((summary.totalAbsent/data.length)*100).toFixed(1)}%\n`;
+    csv += `Toplam Mesai,${summary.totalOvertime} Saat,\n`;
+    csv += '\n';
 
-    csv += 'PERSONEL DETAY\n';
-    csv += 'Personel,Departman,Proje,Durum,Mesai (Saat),Günlük Ücret,Mesai Ücreti,Toplam\n';
+    // Financial Summary Section
+    csv += 'MALİ ÖZET\n';
+    csv += '───────────────────────────────────────────────────────────────────────\n';
+    csv += 'Açıklama,Tutar (TL)\n';
+    csv += `Günlük Ücret Toplamı,₺${summary.totalDailyWage.toFixed(2).replace('.', ',')}\n`;
+    csv += `Mesai Ücreti Toplamı,₺${summary.totalOvertimePay.toFixed(2).replace('.', ',')}\n`;
+    csv += `GENEL TOPLAM,₺${summary.totalGross.toFixed(2).replace('.', ',')}\n`;
+    csv += '\n';
 
+    // Detailed Personnel Report Section
+    csv += 'PERSONEL DETAY RAPORU\n';
+    csv += '═══════════════════════════════════════════════════════════════════════\n';
+    csv += 'Sıra,Personel Adı,TC Kimlik,Departman,Proje,Durum,Çalışma Saati,Mesai (Saat),Günlük Ücret (TL),Mesai Ücreti (TL),Toplam (TL),Açıklama\n';
+
+    let rowNumber = 1;
     data.forEach(record => {
         const dailyPay = record.status === 'Tam Gün' ? record.employee.daily_wage :
                         record.status === 'Yarım Gün' ? record.employee.daily_wage / 2 : 0;
         const overtimePay = (record.overtime_hours || 0) * (record.employee.daily_wage / 9);
         const totalPay = dailyPay + overtimePay;
+        const workHours = record.status === 'Tam Gün' ? '09:00' :
+                         record.status === 'Yarım Gün' ? '04:30' : '00:00';
 
-        csv += `"${record.employee.full_name}","${record.employee.department || '-'}","${record.project ? record.project.project_name : '-'}","${record.status}",${record.overtime_hours || 0},${dailyPay.toFixed(2)},${overtimePay.toFixed(2)},${totalPay.toFixed(2)}\n`;
+        csv += `${rowNumber},"${record.employee.full_name}",${record.employee.tc_kimlik || '-'},"${record.employee.department || '-'}","${record.project ? record.project.project_name : '-'}","${record.status}",${workHours},${record.overtime_hours || 0},₺${dailyPay.toFixed(2).replace('.', ',')},₺${overtimePay.toFixed(2).replace('.', ',')},₺${totalPay.toFixed(2).replace('.', ',')},${record.notes || ''}\n`;
+        rowNumber++;
     });
 
-    csv += `"TOPLAM","","","","",${summary.totalDailyWage.toFixed(2)},${summary.totalOvertimePay.toFixed(2)},${summary.totalGross.toFixed(2)}\n`;
+    // Footer Total Row
+    csv += '═══════════════════════════════════════════════════════════════════════\n';
+    csv += `,"GENEL TOPLAM","","","","","","",₺${summary.totalDailyWage.toFixed(2).replace('.', ',')},₺${summary.totalOvertimePay.toFixed(2).replace('.', ',')},₺${summary.totalGross.toFixed(2).replace('.', ',')},\n`;
+    csv += '═══════════════════════════════════════════════════════════════════════\n';
+    csv += '\n';
 
+    // Footer Information
+    csv += 'ONAY BİLGİLERİ\n';
+    csv += '───────────────────────────────────────────────────────────────────────\n';
+    csv += 'Hazırlayan:,___________________,Tarih:,' + reportDate + '\n';
+    csv += 'Kontrol Eden:,___________________,Tarih:,___________\n';
+    csv += 'Onaylayan:,___________________,Tarih:,___________\n';
+    csv += '\n';
+    csv += 'Not: Bu rapor Dinky Metal ERP sistemi tarafından otomatik olarak oluşturulmuştur.\n';
+
+    // Create and download the file
     const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `Gunluk_Puantaj_${date}.csv`;
+    link.download = `Dinky_Metal_Gunluk_Puantaj_${date}.csv`;
     link.click();
 
-    Toast.success('Günlük rapor Excel formatında indirildi');
+    Toast.success('Profesyonel Excel raporu başarıyla indirildi');
 };
 
 window.exportWeeklyReport = function() {
