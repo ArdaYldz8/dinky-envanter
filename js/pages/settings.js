@@ -1,5 +1,5 @@
 // Settings Page
-import { projectService, supabase } from '../services/supabaseService.js';
+import { projectService, supabase } from '../services/secureServices.js';
 import { formatter } from '../utils/formatter.js';
 import { Toast } from '../utils/toast.js';
 import { Modal } from '../components/Modal.js';
