@@ -107,17 +107,17 @@ export const migrationUtils = {
      * Bulk test all services
      */
     async testAllServices() {
-        const services = [
-            'employeeService',
-            'productService',
-            'customerService',
-            'attendanceService',
-            'dashboardService'
+        const serviceTests = [
+            { name: 'employeeService', method: 'getAll' },
+            { name: 'productService', method: 'getAll' },
+            { name: 'customerService', method: 'getAll' },
+            { name: 'attendanceService', method: 'getAll' },
+            { name: 'dashboardService', method: 'getStats' } // ✅ Fixed method name
         ];
 
         const results = {};
-        for (const service of services) {
-            results[service] = await this.testService(service);
+        for (const serviceTest of serviceTests) {
+            results[serviceTest.name] = await this.testService(serviceTest.name, serviceTest.method);
         }
 
         return results;
