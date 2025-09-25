@@ -223,11 +223,11 @@
         function getSupabaseConfig() {
             const parts = {
                 protocol: 'https://',
-                subdomain: 'spmtwsxrnclkxmqwsxdf',
+                subdomain: 'nppfutvdiwjkzxzzgfhf',
                 domain: '.supabase.co',
                 keyPrefix: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9',
-                keyMiddle: 'eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNwbXR3c3hybmNsa3htcXdzeGRmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY4ODAyODUsImV4cCI6MjA3MjQ1NjI4NX0',
-                keySuffix: 'BpwVkvqpzAP2hroqztXmQNym5Mq_Kijnt9CPG50yP0c'
+                keyMiddle: 'eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5wcGZ1dHZkaXdqa3p4enpnZmhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mjc0NDUyNjQsImV4cCI6MjA0MzAyMTI2NH0',
+                keySuffix: 'XqegSxpTEYBzKWUkbkMHdCJnTiUYT-a4hqKD0lBGV8E'
             };
 
             return {
@@ -340,8 +340,10 @@
                     const userData = {
                         id: data.user.id,
                         email: data.user.email,
+                        name: data.user.email.split('@')[0],
                         role: roleData,
-                        loginTime: new Date().toISOString()
+                        loginTime: new Date().toISOString(),
+                        lastActivity: new Date().toISOString()
                     };
 
                     localStorage.setItem('dinky_user', JSON.stringify(userData));
@@ -351,8 +353,10 @@
                     const userData = {
                         id: sessionData.id || data.user.id,
                         email: sessionData.email || data.user.email,
+                        name: (sessionData.email || data.user.email).split('@')[0],
                         role: sessionData.role,
-                        loginTime: new Date().toISOString()
+                        loginTime: new Date().toISOString(),
+                        lastActivity: new Date().toISOString()
                     };
 
                     if (!userData.role || userData.role === 'user') {

@@ -52,7 +52,9 @@ async function checkAuth() {
         // Supabase session exists but no local user data
         // Set up local user data from Supabase session
         const userData = {
+            id: session.user.id,
             email: session.user.email,
+            name: session.user.email.split('@')[0], // Use email prefix as name
             role: session.user.user_metadata?.role || 'admin',
             loginTime: new Date().toISOString(),
             lastActivity: new Date().toISOString()
