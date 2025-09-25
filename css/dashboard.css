@@ -65,12 +65,246 @@
     border-bottom: none;
 }
 
+/* Critical Stock Alerts */
+.sidebar-widget--alert {
+    border-left: 4px solid #dc3545;
+}
+
+.sidebar-widget--alert .sidebar-widget__header {
+    background-color: #fff5f5;
+    color: #dc3545;
+}
+
+.critical-stock-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.critical-item {
+    background: #fff;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 8px;
+    transition: all 0.2s ease;
+}
+
+.critical-item:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.critical-item--danger {
+    border-left: 4px solid #dc3545;
+    background-color: #fff5f5;
+}
+
+.critical-item--warning {
+    border-left: 4px solid #ffc107;
+    background-color: #fffbf0;
+}
+
+.critical-item--info {
+    border-left: 4px solid #17a2b8;
+    background-color: #f0fcff;
+}
+
+.critical-item__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.critical-item__name {
+    font-weight: 600;
+    color: #333;
+    font-size: 0.9rem;
+}
+
+.critical-item__badge {
+    font-size: 0.7rem;
+    font-weight: bold;
+    padding: 2px 6px;
+    border-radius: 3px;
+    text-transform: uppercase;
+}
+
+.critical-item__badge.danger {
+    background-color: #dc3545;
+    color: white;
+}
+
+.critical-item__badge.warning {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+.critical-item__badge.info {
+    background-color: #17a2b8;
+    color: white;
+}
+
+.critical-item__details {
+    margin-bottom: 8px;
+}
+
+.stock-info {
+    display: flex;
+    gap: 10px;
+    font-size: 0.8rem;
+    color: #666;
+}
+
+.deficit-info {
+    color: #dc3545;
+    font-weight: 600;
+    font-size: 0.8rem;
+    margin-top: 4px;
+}
+
+.critical-item__action {
+    text-align: right;
+}
+
+.alert-footer {
+    text-align: center;
+    padding: 10px 0;
+    border-top: 1px solid #e9ecef;
+    margin-top: 8px;
+}
+
+.alert-footer small {
+    color: #666;
+    display: block;
+    margin-bottom: 5px;
+}
+
+.success-state {
+    text-align: center;
+    padding: 20px;
+    color: #28a745;
+}
+
+.success-state i {
+    font-size: 2rem;
+    margin-bottom: 10px;
+}
+
+/* Dashboard Header Actions */
+.dashboard__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 2rem;
+}
+
+.dashboard__actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 10px;
+}
+
+.quick-reports {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.quick-reports .btn {
+    font-size: 0.85rem;
+    padding: 6px 12px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.quick-reports .btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.date-filter {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.live-indicator {
+    color: #28a745;
+    font-weight: 500;
+}
+
+.live-indicator i {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+/* Additional KPI Card Colors */
+.kpi-card--secondary {
+    border-left: 4px solid #6c757d;
+}
+
+.kpi-card--secondary .kpi-card__value {
+    color: #6c757d;
+}
+
+.kpi-card--danger {
+    border-left: 4px solid #dc3545;
+    background-color: #fff5f5;
+}
+
+.kpi-card--danger .kpi-card__value {
+    color: #dc3545;
+}
+
 @media (max-width: 768px) {
     .dashboard-charts {
         grid-template-columns: 1fr;
     }
-    
+
     .dashboard-stats {
         flex-direction: column;
+    }
+
+    .critical-item__header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 5px;
+    }
+
+    .stock-info {
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .dashboard__header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+
+    .dashboard__actions {
+        width: 100%;
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .quick-reports {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .quick-reports .btn {
+        flex: 1;
+        min-width: 0;
+        font-size: 0.8rem;
+        padding: 8px 6px;
     }
 }

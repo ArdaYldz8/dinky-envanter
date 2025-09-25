@@ -1,7 +1,8 @@
 // Modern Dashboard Page
-import { employeeService, projectService, productService, attendanceService, inventoryService } from '../services/supabaseService.js';
+import { employeeService, projectService, productService, attendanceService, inventoryService, taskService } from '../services/supabaseService.js';
 import { formatter } from '../utils/formatter.js';
 import { Toast } from '../utils/toast.js';
+import { ExcelExporter } from '../utils/excelExporter.js';
 
 // Global chart instances
 let attendanceTrendChart = null;
@@ -19,7 +20,18 @@ export async function loadDashboard() {
                     <h1><i class="fas fa-tachometer-alt"></i> Dashboard</h1>
                     <p class="dashboard__subtitle">Dinky Metal ERP Kontrol Paneli</p>
                 </div>
-                <div class="dashboard__date">
+                <div class="dashboard__actions">
+                    <div class="quick-reports">
+                        <button class="btn btn-sm btn-success" onclick="window.exportQuickStockReport()">
+                            <i class="fas fa-file-excel"></i> Stok Raporu
+                        </button>
+                        <button class="btn btn-sm btn-info" onclick="window.exportQuickAttendanceReport()">
+                            <i class="fas fa-file-excel"></i> Devam Raporu
+                        </button>
+                        <button class="btn btn-sm btn-warning" onclick="window.exportQuickFinancialReport()">
+                            <i class="fas fa-file-excel"></i> Mali Rapor
+                        </button>
+                    </div>
                     <div class="date-filter">
                         <span class="current-date">${formatter.date(new Date())}</span>
                         <span class="live-indicator">
@@ -120,41 +132,68 @@ async function renderKpiCards() {
         const criticalStockCount = products.filter(product => product.current_stock <= product.min_stock_level).length;
         const totalOvertimeHours = todayAttendance.reduce((sum, att) => sum + (att.overtime_hours || 0), 0);
 
+        // Get today's completed and pending tasks
+        const todayTasks = await getTasksForToday();
+        const completedTasksToday = todayTasks.completed || 0;
+        const pendingTasksToday = todayTasks.pending || 0;
+
+        // Get monthly financial summary
+        const monthlyFinancial = await getMonthlyFinancialSummary();
+        const totalStockValue = products.reduce((sum, product) => sum + (product.current_stock * (product.unit_price || 0)), 0);
+
         // Generate KPI Cards HTML
         container.innerHTML = `
             <div class="kpi-card kpi-card--primary">
-                <h5 class="kpi-card__title">Aktif Personel</h5>
-                <p class="kpi-card__value">${totalEmployees}</p>
+                <h5 class="kpi-card__title">Bugünkü İşler</h5>
+                <p class="kpi-card__value">${completedTasksToday} / ${completedTasksToday + pendingTasksToday}</p>
                 <div class="kpi-card__change">
-                    <i class="fas fa-users"></i>
-                    <span>Toplam personel sayısı</span>
+                    <i class="fas fa-tasks"></i>
+                    <span>${pendingTasksToday} iş bekliyor, ${completedTasksToday} iş tamamlandı</span>
                 </div>
             </div>
 
             <div class="kpi-card kpi-card--success">
-                <h5 class="kpi-card__title">Bugün Devam Durumu</h5>
+                <h5 class="kpi-card__title">Personel Durumu</h5>
                 <p class="kpi-card__value">${presentToday} / ${totalEmployees}</p>
                 <div class="kpi-card__change">
-                    <i class="fas fa-calendar-check"></i>
-                    <span>%${totalEmployees > 0 ? Math.round((presentToday / totalEmployees) * 100) : 0} devam oranı</span>
+                    <i class="fas fa-users"></i>
+                    <span>%${totalEmployees > 0 ? Math.round((presentToday / totalEmployees) * 100) : 0} bugün işte</span>
                 </div>
             </div>
 
-            <div class="kpi-card kpi-card--warning">
-                <h5 class="kpi-card__title">Kritik Seviye Stok</h5>
+            <div class="kpi-card ${criticalStockCount > 0 ? 'kpi-card--danger' : 'kpi-card--success'}">
+                <h5 class="kpi-card__title">Stok Durumu</h5>
                 <p class="kpi-card__value">${criticalStockCount}</p>
                 <div class="kpi-card__change">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <span>Ürün kritik seviyede</span>
+                    <i class="fas fa-${criticalStockCount > 0 ? 'exclamation-triangle' : 'check-circle'}"></i>
+                    <span>${criticalStockCount > 0 ? criticalStockCount + ' ürün kritik seviyede!' : 'Stoklar normal seviyede'}</span>
                 </div>
             </div>
 
             <div class="kpi-card kpi-card--info">
-                <h5 class="kpi-card__title">Bugünkü Toplam Mesai</h5>
+                <h5 class="kpi-card__title">Toplam Stok Değeri</h5>
+                <p class="kpi-card__value">${formatter.currency(totalStockValue)}</p>
+                <div class="kpi-card__change">
+                    <i class="fas fa-warehouse"></i>
+                    <span>Depodaki toplam değer</span>
+                </div>
+            </div>
+
+            <div class="kpi-card kpi-card--warning">
+                <h5 class="kpi-card__title">Bu Ay Mali</h5>
+                <p class="kpi-card__value">${formatter.currency(monthlyFinancial.net || 0)}</p>
+                <div class="kpi-card__change">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Gelir: ${formatter.currency(monthlyFinancial.income || 0)} | Gider: ${formatter.currency(monthlyFinancial.expense || 0)}</span>
+                </div>
+            </div>
+
+            <div class="kpi-card kpi-card--secondary">
+                <h5 class="kpi-card__title">Mesai Durumu</h5>
                 <p class="kpi-card__value">${totalOvertimeHours} saat</p>
                 <div class="kpi-card__change">
                     <i class="fas fa-clock"></i>
-                    <span>Toplam ek mesai saati</span>
+                    <span>Bugünkü toplam ek mesai</span>
                 </div>
             </div>
         `;
@@ -555,3 +594,150 @@ function showProjectPersonnelModal(projectName, personnelDetails) {
     };
     document.addEventListener('keydown', escHandler);
 }
+
+// Get today's tasks summary
+async function getTasksForToday() {
+    try {
+        const today = new Date().toISOString().split('T')[0];
+        const { data: tasks } = await taskService.getAll();
+
+        if (!tasks) return { completed: 0, pending: 0 };
+
+        // Filter today's tasks (created today or due today)
+        const todayTasks = tasks.filter(task => {
+            const createdDate = task.created_at ? task.created_at.split('T')[0] : null;
+            const dueDate = task.due_date ? task.due_date.split('T')[0] : null;
+            return createdDate === today || dueDate === today;
+        });
+
+        const completed = todayTasks.filter(task => task.status === 'Tamamlandı').length;
+        const pending = todayTasks.filter(task => task.status !== 'Tamamlandı').length;
+
+        return { completed, pending };
+    } catch (error) {
+        console.error('Günlük görevler alınırken hata:', error);
+        return { completed: 0, pending: 0 };
+    }
+}
+
+// Get monthly financial summary
+async function getMonthlyFinancialSummary() {
+    try {
+        // This is a simplified calculation - in real app you'd have actual financial data
+        // For now, we'll estimate from inventory movements and costs
+
+        const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM format
+        const { data: movements } = await inventoryService.getAll();
+
+        if (!movements) return { income: 0, expense: 0, net: 0 };
+
+        // Filter this month's movements
+        const thisMonthMovements = movements.filter(movement =>
+            movement.movement_date && movement.movement_date.startsWith(currentMonth)
+        );
+
+        // Rough calculation based on inventory movements
+        let estimatedIncome = 0;
+        let estimatedExpense = 0;
+
+        thisMonthMovements.forEach(movement => {
+            const value = (movement.quantity || 0) * (movement.products?.unit_price || 0);
+            if (movement.type === 'Çıkış') {
+                estimatedIncome += value * 1.3; // Assume 30% markup on sales
+            } else if (movement.type === 'Giriş') {
+                estimatedExpense += value;
+            }
+        });
+
+        return {
+            income: estimatedIncome,
+            expense: estimatedExpense,
+            net: estimatedIncome - estimatedExpense
+        };
+    } catch (error) {
+        console.error('Aylık mali özet alınırken hata:', error);
+        return { income: 0, expense: 0, net: 0 };
+    }
+}
+
+// Global Excel Export Functions (accessible from dashboard buttons)
+window.exportQuickStockReport = async function() {
+    try {
+        Toast.info('Stok raporu hazırlanıyor...');
+        const { data: products } = await productService.getAll();
+
+        if (!products || products.length === 0) {
+            Toast.warning('Stok verisi bulunamadı');
+            return;
+        }
+
+        await ExcelExporter.exportStockReport(products, 'Hizli_Stok_Raporu');
+        Toast.success('Stok raporu başarıyla indirildi!');
+    } catch (error) {
+        console.error('Stok raporu export hatası:', error);
+        Toast.error('Stok raporu oluşturulurken hata oluştu');
+    }
+};
+
+window.exportQuickAttendanceReport = async function() {
+    try {
+        Toast.info('Devam raporu hazırlanıyor...');
+
+        // Get last 30 days attendance
+        const endDate = new Date();
+        const startDate = new Date();
+        startDate.setDate(endDate.getDate() - 30);
+
+        const startDateStr = startDate.toISOString().split('T')[0];
+        const endDateStr = endDate.toISOString().split('T')[0];
+
+        const { data: attendanceData } = await attendanceService.getByDateRange(startDateStr, endDateStr);
+
+        if (!attendanceData || attendanceData.length === 0) {
+            Toast.warning('Son 30 günde devam verisi bulunamadı');
+            return;
+        }
+
+        await ExcelExporter.exportAttendanceReport(
+            attendanceData,
+            startDateStr,
+            endDateStr,
+            'Hizli_Devam_Raporu'
+        );
+        Toast.success('Devam raporu başarıyla indirildi!');
+    } catch (error) {
+        console.error('Devam raporu export hatası:', error);
+        Toast.error('Devam raporu oluşturulurken hata oluştu');
+    }
+};
+
+window.exportQuickFinancialReport = async function() {
+    try {
+        Toast.info('Mali rapor hazırlanıyor...');
+
+        // Get current month's financial summary
+        const monthlyFinancial = await getMonthlyFinancialSummary();
+        const { data: products } = await productService.getAll();
+
+        const totalStockValue = products?.reduce((sum, product) =>
+            sum + (product.current_stock * (product.unit_price || 0)), 0) || 0;
+
+        const financialData = {
+            totalStockValue: totalStockValue,
+            estimatedIncome: monthlyFinancial.income || 0,
+            estimatedExpense: monthlyFinancial.expense || 0
+        };
+
+        const currentMonth = new Date().toLocaleDateString('tr-TR', { year: 'numeric', month: 'long' });
+
+        await ExcelExporter.exportFinancialSummary(
+            financialData,
+            currentMonth,
+            'Hizli_Mali_Rapor'
+        );
+        Toast.success('Mali rapor başarıyla indirildi!');
+    } catch (error) {
+        console.error('Mali rapor export hatası:', error);
+        Toast.error('Mali rapor oluşturulurken hata oluştu');
+    }
+};
