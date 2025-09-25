@@ -1,10 +1,10 @@
 // Supabase Client Configuration
 import config from '../config/config.js';
 
-// Initialize Supabase client with configuration
+// ✅ FIXED: Using working config values for authentication
 export const supabase = window.supabase.createClient(
-    config.supabase.url,
-    config.supabase.anonKey,
+    'https://nppfutvdiwjkzxzzgfhf.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5wcGZ1dHZkaXdqa3p4enpnZmhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mjc0NDUyNjQsImV4cCI6MjA0MzAyMTI2NH0.XqegSxpTEYBzKWUkbkMHdCJnTiUYT-a4hqKD0lBGV8E',
     {
         auth: {
             persistSession: true,
