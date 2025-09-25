@@ -1,7 +1,23 @@
-# 🔐 Dinky ERP Sistemi - Kullanıcı Hesapları (ÖRNEK)
+# 🔒 DİNKY METAL ERP - GÜVENLİK YÜKSELTMESİ v1.1.0
 
-## ⚠️ GÜVENLİK UYARISI
-Bu dosya sadece ÖRNEK amaçlıdır. Gerçek şifreler environment variables içinde saklanmalıdır.
+**Tarih**: 2025-09-25 | **Durum**: 🚀 Production Ready
+
+## 🛡️ YENİ GÜVENLİK ÖZELLİKLERİ
+
+### ✅ Tamamlanan İyileştirmeler
+- **🔐 API Key Protection**: Server-side Netlify Functions
+- **🏗️ Secure Architecture**: Environment variables
+- **📡 API Proxy**: Secure server-side communication
+
+## ⚠️ DEPLOYMENT TALİMATLARI
+
+**Netlify Environment Variables** (Site Settings → Environment Variables):
+```env
+SUPABASE_URL=https://nppfutvdiwjkzxzzgfhf.supabase.co
+SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5wcGZ1dHZkaXdqa3p4enpnZmhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mjc0NDUyNjQsImV4cCI6MjA0MzAyMTI2NH0.XqegSxpTEYBzKWUkbkMHdCJnTiUYT-a4hqKD0lBGV8E
+SUPABASE_SERVICE_ROLE_KEY=[Supabase Dashboard'dan service_role key]
+NODE_ENV=production
+```
 
 ## Test/Demo Hesapları
 ```

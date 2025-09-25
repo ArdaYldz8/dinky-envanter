@@ -1,16 +1,17 @@
-// Application Configuration
-// Environment variables veya fallback değerler kullanır
+// LEGACY Configuration - DEPRECATED
+// ⚠️ SECURITY NOTICE: This file contains exposed API keys and will be removed
+// ✅ NEW: Use secureConfig.js with Netlify Functions for API security
+
+// MIGRATION STATUS:
+// - ❌ INSECURE: Hardcoded API keys (CRITICAL VULNERABILITY)
+// - ✅ SECURE: Server-side API proxy via Netlify Functions
+// - 🔄 TRANSITION: Gradually migrating all services to secure endpoints
 
 const config = {
-    // Supabase Configuration
+    // DEPRECATED: Exposed API keys (SECURITY RISK)
     supabase: {
-        url: import.meta.env?.VITE_SUPABASE_URL ||
-             window.__ENV__?.SUPABASE_URL ||
-             'https://spmtwsxrnclkxmqwsxdf.supabase.co',
-
-        anonKey: import.meta.env?.VITE_SUPABASE_ANON_KEY ||
-                 window.__ENV__?.SUPABASE_ANON_KEY ||
-                 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNwbXR3c3hybmNsa3htcXdzeGRmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY4ODAyODUsImV4cCI6MjA3MjQ1NjI4NX0.BpwVkvqpzAP2hroqztXmQNym5Mq_Kijnt9CPG50yP0c'
+        url: 'https://nppfutvdiwjkzxzzgfhf.supabase.co', // ⚠️ EXPOSED
+        anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5wcGZ1dHZkaXdqa3p4enpnZmhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mjc0NDUyNjQsImV4cCI6MjA0MzAyMTI2NH0.XqegSxpTEYBzKWUkbkMHdCJnTiUYT-a4hqKD0lBGV8E' // ⚠️ EXPOSED
     },
 
     // Application Settings
