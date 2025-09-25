@@ -1,5 +1,5 @@
 // Attendance (Puantaj) Page
-import { attendanceService, employeeService, projectService } from '../services/secureServices.js';
+import { attendanceService, employeeService, projectService } from '../services/supabaseService.js';
 import { formatter } from '../utils/formatter.js';
 import { Toast } from '../utils/toast.js';
 

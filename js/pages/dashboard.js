@@ -1,5 +1,5 @@
 // Modern Dashboard Page
-import { employeeService, projectService, productService, attendanceService, inventoryService } from '../services/secureServices.js';
+import { employeeService, projectService, productService, attendanceService, inventoryService } from '../services/supabaseService.js';
 import { formatter } from '../utils/formatter.js';
 import { Toast } from '../utils/toast.js';
 

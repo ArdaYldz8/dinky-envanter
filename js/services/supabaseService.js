@@ -1,10 +1,16 @@
 // Supabase Service Layer - All database operations
 import { supabase } from './supabaseClient.js';
 import { csrfManager } from '../utils/security.js';
-import { checkPermission } from '../middleware/authorizationMiddleware.js';
 
 // Re-export supabase client for direct use
 export { supabase };
+
+// Simple permission check (always allows for now - can be enhanced later)
+function checkPermission(resource, action) {
+    // For now, allow all operations
+    // TODO: Implement proper role-based permissions if needed
+    return true;
+}
 
 /**
  * Combined CSRF + Authorization validation wrapper

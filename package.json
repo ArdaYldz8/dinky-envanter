@@ -1,28 +1,16 @@
 {
   "name": "dinky-metal-erp",
   "version": "1.0.0",
-  "description": "Dinky Metal ERP - Personnel and Stock Management System",
+  "description": "Dinky Metal ERP - Personnel and Inventory Management",
   "main": "index.html",
-  "type": "module",
   "scripts": {
-    "start": "python3 -m http.server 8080",
-    "dev": "python3 -m http.server 8080",
-    "deploy": "netlify deploy --prod",
-    "deploy:preview": "netlify deploy"
+    "start": "python -m http.server 8080",
+    "deploy": "netlify deploy --prod"
   },
-  "keywords": [
-    "erp",
-    "inventory",
-    "personnel",
-    "management"
-  ],
-  "author": "Dinky Metal",
-  "license": "MIT",
   "dependencies": {
-    "@supabase/supabase-js": "^2.57.4",
-    "apexcharts": "^5.3.4"
+    "@supabase/supabase-js": "^2.57.4"
   },
-  "devDependencies": {
-    "netlify-cli": "^17.0.0"
-  }
+  "keywords": ["erp", "inventory", "personnel"],
+  "author": "Dinky Metal",
+  "license": "MIT"
 }

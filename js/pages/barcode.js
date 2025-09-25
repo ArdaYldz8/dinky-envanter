@@ -1,5 +1,5 @@
 // Barcode Scanner Page
-import { barcodeService, employeeService, projectService } from '../services/secureServices.js';
+import { barcodeService, employeeService, projectService } from '../services/supabaseService.js';
 import { formatter } from '../utils/formatter.js';
 import { Toast } from '../utils/toast.js';
 import { BarcodeScanner, ManualBarcodeInput } from '../components/BarcodeScanner.js';

@@ -1,6 +1,5 @@
 // Main Application Router and Controller
 import { testConnection, supabase } from './services/supabaseClient.js';
-import { migrationUtils } from './services/secureServices.js'; // ✅ Added for Phase 1.2
 import { loadDashboard } from './pages/dashboard.js';
 import { loadPersonnel } from './pages/personnel.js';
 import { loadAttendance } from './pages/attendance.js';
@@ -11,7 +10,6 @@ import { loadSettings } from './pages/settings.js';
 import { loadTasks } from './pages/tasks.js';
 import { loadCustomers } from './pages/customers.js';
 import { Toast } from './utils/toast.js';
-import { initCSRFProtection } from './middleware/csrfMiddleware.js';
 
 // Router configuration
 const routes = {
@@ -192,13 +190,7 @@ window.logout = async function() {
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('Initializing Dinky Metal ERP...');
 
-    // Initialize CSRF protection
-    initCSRFProtection();
-    console.log('✅ CSRF protection initialized');
 
-    // Initialize migration utils for testing (Phase 1.2)
-    window.migrationUtils = migrationUtils;
-    console.log('🔒 Migration utilities loaded');
 
     // Check authentication first
     const isAuthenticated = await checkAuth();

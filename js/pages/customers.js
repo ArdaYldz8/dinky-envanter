@@ -1,5 +1,5 @@
 // Customers (Cari Hesaplar) Page
-import { customerService } from '../services/secureServices.js';
+import { customerService } from '../services/supabaseService.js';
 import { formatter } from '../utils/formatter.js';
 import { Toast } from '../utils/toast.js';
 import { Modal } from '../components/Modal.js';
