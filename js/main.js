@@ -37,48 +37,68 @@ const rolePermissions = {
 };
 
 // Check authentication
-function checkAuth() {
-    const userStr = localStorage.getItem('dinky_user');
-    if (!userStr) {
+async function checkAuth() {
+    // First check Supabase session
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session) {
+        // No Supabase session, redirect to login
         window.location.href = 'login.html';
         return false;
     }
 
-    try {
-        currentUser = JSON.parse(userStr);
+    const userStr = localStorage.getItem('dinky_user');
+    if (!userStr) {
+        // Supabase session exists but no local user data
+        // Set up local user data from Supabase session
+        const userData = {
+            email: session.user.email,
+            role: session.user.user_metadata?.role || 'admin',
+            loginTime: new Date().toISOString(),
+            lastActivity: new Date().toISOString()
+        };
+        localStorage.setItem('dinky_user', JSON.stringify(userData));
+        currentUser = userData;
+    } else {
+        try {
+            currentUser = JSON.parse(userStr);
 
-        // Check if session is from before password update
-        const loginTime = new Date(currentUser.loginTime);
-        const passwordUpdateTime = new Date('2025-09-17T20:00:00'); // Password update time
+            // Check if session is from before password update
+            const loginTime = new Date(currentUser.loginTime);
+            const passwordUpdateTime = new Date('2025-09-17T20:00:00'); // Password update time
 
-        if (loginTime < passwordUpdateTime) {
-            // Force logout for old sessions
+            if (loginTime < passwordUpdateTime) {
+                // Force logout for old sessions
+                localStorage.removeItem('dinky_user');
+                await supabase.auth.signOut();
+                alert('Güvenlik güncellemesi nedeniyle oturumunuz sonlandırıldı. Lütfen yeni şifrenizle tekrar giriş yapın.');
+                window.location.href = 'login.html';
+                return false;
+            }
+
+            // Check session timeout (8 hours)
+            const SESSION_TIMEOUT = 8 * 60 * 60 * 1000; // 8 hours in milliseconds
+            const now = new Date();
+            const sessionAge = now - loginTime;
+
+            if (sessionAge > SESSION_TIMEOUT) {
+                localStorage.removeItem('dinky_user');
+                await supabase.auth.signOut();
+                alert('Oturumunuzun süresi doldu. Lütfen tekrar giriş yapın.');
+                window.location.href = 'login.html';
+                return false;
+            }
+
+            // Update last activity time
+            currentUser.lastActivity = now.toISOString();
+            localStorage.setItem('dinky_user', JSON.stringify(currentUser));
+        } catch (e) {
+            // Invalid session data
             localStorage.removeItem('dinky_user');
-            alert('Güvenlik güncellemesi nedeniyle oturumunuz sonlandırıldı. Lütfen yeni şifrenizle tekrar giriş yapın.');
+            await supabase.auth.signOut();
             window.location.href = 'login.html';
             return false;
         }
-
-        // Check session timeout (8 hours)
-        const SESSION_TIMEOUT = 8 * 60 * 60 * 1000; // 8 hours in milliseconds
-        const now = new Date();
-        const sessionAge = now - loginTime;
-
-        if (sessionAge > SESSION_TIMEOUT) {
-            localStorage.removeItem('dinky_user');
-            alert('Oturumunuzun süresi doldu. Lütfen tekrar giriş yapın.');
-            window.location.href = 'login.html';
-            return false;
-        }
-
-        // Update last activity time
-        currentUser.lastActivity = now.toISOString();
-        localStorage.setItem('dinky_user', JSON.stringify(currentUser));
-    } catch (e) {
-        // Invalid session data
-        localStorage.removeItem('dinky_user');
-        window.location.href = 'login.html';
-        return false;
     }
     
     // Update UI with user info
@@ -158,8 +178,9 @@ async function logActivity(actionType, tableName, recordId, oldValues, newValues
 window.logout = async function() {
     if (confirm('Çıkmak istediğinizden emin misiniz?')) {
         // Logout activity logging removed - not needed
-        
+
         localStorage.removeItem('dinky_user');
+        await supabase.auth.signOut();
         window.location.href = 'login.html';
     }
 };
@@ -173,7 +194,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.log('✅ CSRF protection initialized');
 
     // Check authentication first
-    if (!checkAuth()) {
+    const isAuthenticated = await checkAuth();
+    if (!isAuthenticated) {
         return;
     }
     
