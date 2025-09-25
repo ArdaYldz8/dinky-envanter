@@ -8,10 +8,10 @@
 // - 🔄 TRANSITION: Gradually migrating all services to secure endpoints
 
 const config = {
-    // DEPRECATED: Exposed API keys (SECURITY RISK)
+    // FIXED: Using WORKING Supabase project (SECURITY RISK - will be migrated)
     supabase: {
-        url: 'https://nppfutvdiwjkzxzzgfhf.supabase.co', // ⚠️ EXPOSED
-        anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5wcGZ1dHZkaXdqa3p4enpnZmhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mjc0NDUyNjQsImV4cCI6MjA0MzAyMTI2NH0.XqegSxpTEYBzKWUkbkMHdCJnTiUYT-a4hqKD0lBGV8E' // ⚠️ EXPOSED
+        url: 'https://spmtwsxrnclkxmqwsxdf.supabase.co', // ⚠️ EXPOSED
+        anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNwbXR3c3hybmNsa3htcXdzeGRmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY4ODAyODUsImV4cCI6MjA3MjQ1NjI4NX0.BpwVkvqpzAP2hroqztXmQNym5Mq_Kijnt9CPG50yP0c' // ⚠️ EXPOSED
     },
 
     // Application Settings
