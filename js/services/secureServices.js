@@ -68,7 +68,32 @@ export const migrationUtils = {
     async testService(serviceName, methodName = 'getAll') {
         try {
             console.log(`🧪 Testing ${serviceName}.${methodName}...`);
-            const service = eval(serviceName);
+
+            // CSP-safe service mapping (no eval())
+            const serviceMap = {
+                employeeService,
+                productService,
+                customerService,
+                attendanceService,
+                transactionService,
+                inventoryService,
+                dashboardService,
+                barcodeService,
+                payrollService,
+                taskService,
+                projectService,
+                taskPersonnelService
+            };
+
+            const service = serviceMap[serviceName];
+            if (!service) {
+                throw new Error(`Service not found: ${serviceName}`);
+            }
+
+            if (!service[methodName]) {
+                throw new Error(`Method not found: ${serviceName}.${methodName}`);
+            }
+
             const result = await service[methodName]();
             console.log(`✅ Test passed: ${serviceName}.${methodName}`);
             return { success: true, result };
