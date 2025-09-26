@@ -439,7 +439,11 @@ async function loadProjects() {
         if (error) throw error;
         
         const tbody = document.getElementById('projectsTableBody');
-        
+        if (!tbody) {
+            console.error('projectsTableBody element not found');
+            return;
+        }
+
         if (projects && projects.length > 0) {
             tbody.innerHTML = projects.map(project => `
                 <tr data-id="${project.id}">

@@ -101,26 +101,23 @@ export const quoteService = {
 
     // Get all quotes
     async getAll() {
-        const { data, error } = await supabase
-            .from('quotes')
-            .select(`
-                *,
-                customers (
-                    id,
-                    company_name,
-                    contact_name
-                ),
-                quote_items (
-                    *,
-                    products (
-                        product_name,
-                        product_code
-                    )
-                )
-            `)
-            .order('created_at', { ascending: false });
+        try {
+            // First try simple query to test table existence
+            const { data, error } = await supabase
+                .from('quotes')
+                .select('*')
+                .order('created_at', { ascending: false });
 
-        return { data, error };
+            if (error) {
+                console.error('Quotes table query error:', error);
+                return { data: [], error };
+            }
+
+            return { data: data || [], error: null };
+        } catch (error) {
+            console.error('Error in getAll:', error);
+            return { data: [], error };
+        }
     },
 
     // Get single quote

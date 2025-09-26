@@ -1662,10 +1662,35 @@ export const customerService = {
 export const taskPersonnelService = {
     async getAll() {
         try {
-            const { data, error } = await supabase
-                .from('task_personnel')
-                .select()
-                .order('name');
+            // Try personnel table first, fallback to task_personnel if it exists
+            let { data, error } = await supabase
+                .from('personnel')
+                .select(`
+                    id,
+                    first_name,
+                    last_name,
+                    position,
+                    status
+                `)
+                .order('first_name');
+
+            // If personnel table works, transform data to match expected format
+            if (!error && data) {
+                data = data.map(person => ({
+                    id: person.id,
+                    name: `${person.first_name} ${person.last_name}`,
+                    position: person.position,
+                    is_active: person.status === 'Aktif'
+                }));
+            } else {
+                // Fallback to task_personnel table
+                const result = await supabase
+                    .from('task_personnel')
+                    .select()
+                    .order('name');
+                data = result.data;
+                error = result.error;
+            }
             
             if (error) throw error;
             return { data, error: null };
@@ -1678,12 +1703,38 @@ export const taskPersonnelService = {
     async getActive() {
         try {
             console.log('Fetching active task personnel...');
-            
-            const { data, error } = await supabase
-                .from('task_personnel')
-                .select()
-                .eq('is_active', true)
-                .order('name');
+
+            // Try personnel table first, fallback to task_personnel if it exists
+            let { data, error } = await supabase
+                .from('personnel')
+                .select(`
+                    id,
+                    first_name,
+                    last_name,
+                    position,
+                    status
+                `)
+                .eq('status', 'Aktif')
+                .order('first_name');
+
+            // If personnel table works, transform data to match expected format
+            if (!error && data) {
+                data = data.map(person => ({
+                    id: person.id,
+                    name: `${person.first_name} ${person.last_name}`,
+                    position: person.position,
+                    is_active: true
+                }));
+            } else {
+                // Fallback to task_personnel table
+                const result = await supabase
+                    .from('task_personnel')
+                    .select()
+                    .eq('is_active', true)
+                    .order('name');
+                data = result.data;
+                error = result.error;
+            }
             
             if (error) {
                 console.error('Supabase task personnel fetch error:', error);
