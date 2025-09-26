@@ -30,6 +30,19 @@ export const formatter = {
         return new Intl.DateTimeFormat('tr-TR').format(date);
     },
 
+    // Format datetime
+    datetime(dateString) {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        return new Intl.DateTimeFormat('tr-TR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        }).format(date);
+    },
+
     // Format date for input
     dateForInput(dateString) {
         if (!dateString) {
@@ -38,6 +51,17 @@ export const formatter = {
         }
         const date = new Date(dateString);
         return date.toISOString().split('T')[0];
+    },
+
+    // Format date for display
+    dateDisplay(dateString) {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        return new Intl.DateTimeFormat('tr-TR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+        }).format(date);
     },
 
     // Get month name

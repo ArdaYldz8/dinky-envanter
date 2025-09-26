@@ -1,0 +1,413 @@
+/* Modern Dropdown Navbar Styles */
+
+/* Ana Sidebar - Daha dar ve temiz */
+.sidebar {
+    width: 220px;
+    height: 100vh;
+    background: linear-gradient(180deg, #2c3e50 0%, #34495e 100%);
+    position: fixed;
+    left: 0;
+    top: 0;
+    transition: all 0.3s ease;
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+}
+
+/* Logo Alanı */
+.sidebar-header {
+    padding: 15px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: white;
+}
+
+.logo i {
+    font-size: 22px;
+    color: #3498db;
+}
+
+.logo h2 {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0;
+    white-space: nowrap;
+}
+
+/* Inner Toggle Button */
+.sidebar-toggle-inner {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    color: rgba(255, 255, 255, 0.8);
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+}
+
+.sidebar-toggle-inner:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    transform: scale(1.05);
+}
+
+.sidebar-toggle-inner i {
+    font-size: 16px;
+    transition: transform 0.3s ease;
+}
+
+.sidebar.collapsed .sidebar-toggle-inner i {
+    transform: rotate(90deg);
+}
+
+/* Ana Menü */
+.nav-menu {
+    list-style: none;
+    padding: 20px 0;
+    margin: 0;
+}
+
+.nav-item {
+    position: relative;
+    margin: 0;
+}
+
+/* Ana Menü Linkleri */
+.nav-link {
+    display: flex;
+    align-items: center;
+    padding: 12px 20px;
+    color: rgba(255, 255, 255, 0.85);
+    text-decoration: none;
+    transition: all 0.3s ease;
+    font-size: 14px;
+    cursor: pointer;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+}
+
+.nav-link:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    padding-left: 25px;
+}
+
+.nav-link.active {
+    background: rgba(52, 152, 219, 0.2);
+    color: #3498db;
+    border-left: 3px solid #3498db;
+}
+
+.nav-link i {
+    width: 20px;
+    margin-right: 10px;
+    font-size: 16px;
+}
+
+/* Dropdown Arrow */
+.nav-link.has-dropdown::after {
+    content: '\f107';
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    margin-left: auto;
+    transition: transform 0.3s ease;
+}
+
+.nav-link.has-dropdown.open::after {
+    transform: rotate(180deg);
+}
+
+/* Dropdown Menu */
+.dropdown-menu {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.dropdown-menu.show {
+    max-height: 300px;
+}
+
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    padding: 10px 20px 10px 45px;
+    color: rgba(255, 255, 255, 0.7);
+    text-decoration: none;
+    font-size: 13px;
+    transition: all 0.2s ease;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+}
+
+.dropdown-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: white;
+    padding-left: 50px;
+}
+
+.dropdown-item.active {
+    color: #3498db;
+    background: rgba(52, 152, 219, 0.1);
+}
+
+.dropdown-item i {
+    width: 15px;
+    margin-right: 8px;
+    font-size: 12px;
+    opacity: 0.8;
+}
+
+/* User Info Footer */
+.sidebar-footer {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    padding: 15px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 13px;
+}
+
+.user-info i {
+    font-size: 20px;
+    color: #3498db;
+}
+
+/* Collapsed State */
+.sidebar.collapsed {
+    width: 60px;
+}
+
+.sidebar.collapsed .sidebar-header {
+    padding: 15px 10px;
+    justify-content: center;
+}
+
+.sidebar.collapsed .logo h2,
+.sidebar.collapsed .nav-link span,
+.sidebar.collapsed .dropdown-menu,
+.sidebar.collapsed .user-info span,
+.sidebar.collapsed .nav-link::after,
+.sidebar.collapsed .sidebar-toggle-inner {
+    display: none;
+}
+
+.sidebar.collapsed .nav-link {
+    justify-content: center;
+    padding: 12px;
+}
+
+.sidebar.collapsed .nav-link:hover {
+    padding-left: 12px;
+}
+
+.sidebar.collapsed .nav-link i {
+    margin: 0;
+    font-size: 20px;
+}
+
+/* Tooltip for collapsed state */
+.sidebar.collapsed .nav-item {
+    position: relative;
+}
+
+.sidebar.collapsed .nav-link::before {
+    content: attr(data-tooltip);
+    position: absolute;
+    left: 100%;
+    margin-left: 10px;
+    padding: 5px 10px;
+    background: #2c3e50;
+    color: white;
+    border-radius: 4px;
+    white-space: nowrap;
+    font-size: 12px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.sidebar.collapsed .nav-link:hover::before {
+    opacity: 1;
+}
+
+
+/* Floating Toggle for Collapsed State */
+.sidebar-expand-btn {
+    position: fixed;
+    top: 15px;
+    left: 70px;
+    width: 36px;
+    height: 36px;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    color: #2c3e50;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+    z-index: 999;
+}
+
+.sidebar.collapsed ~ .sidebar-expand-btn {
+    display: flex;
+}
+
+.sidebar-expand-btn:hover {
+    background: #f8f9fa;
+    border-color: #3498db;
+    color: #3498db;
+    transform: translateX(2px);
+}
+
+.sidebar-expand-btn i {
+    font-size: 16px;
+}
+
+/* Main Content Adjustment */
+.main-content {
+    margin-left: 220px;
+    padding: 20px;
+    transition: margin-left 0.3s ease;
+    min-height: 100vh;
+    background: #f5f6fa;
+}
+
+.sidebar.collapsed ~ .main-content {
+    margin-left: 60px;
+    padding-left: 70px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .sidebar {
+        width: 100%;
+        height: auto;
+        position: static;
+    }
+
+    .main-content {
+        margin-left: 0;
+    }
+
+    .nav-menu {
+        display: flex;
+        flex-wrap: wrap;
+        padding: 10px;
+    }
+
+    .nav-item {
+        flex: 1 1 50%;
+    }
+
+    .dropdown-menu {
+        position: static;
+        background: rgba(0, 0, 0, 0.1);
+    }
+
+    .sidebar-toggle {
+        display: none;
+    }
+}
+
+/* Smooth animations */
+@keyframes slideIn {
+    from {
+        transform: translateX(-100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.nav-item {
+    animation: slideIn 0.3s ease forwards;
+    opacity: 0;
+}
+
+.nav-item:nth-child(1) { animation-delay: 0.1s; }
+.nav-item:nth-child(2) { animation-delay: 0.2s; }
+.nav-item:nth-child(3) { animation-delay: 0.3s; }
+.nav-item:nth-child(4) { animation-delay: 0.4s; }
+.nav-item:nth-child(5) { animation-delay: 0.5s; }
+.nav-item:nth-child(6) { animation-delay: 0.6s; }
+
+/* Badge for notifications */
+.nav-badge {
+    background: #e74c3c;
+    color: white;
+    font-size: 10px;
+    padding: 2px 5px;
+    border-radius: 10px;
+    margin-left: auto;
+    min-width: 18px;
+    text-align: center;
+}
+
+/* Search Box in Navbar */
+.nav-search {
+    padding: 10px 20px;
+    margin-bottom: 10px;
+}
+
+.search-input {
+    width: 100%;
+    padding: 8px 35px 8px 12px;
+    border: none;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    font-size: 13px;
+    transition: all 0.3s ease;
+}
+
+.search-input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.search-input:focus {
+    background: rgba(255, 255, 255, 0.2);
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.3);
+}
+
+.search-icon {
+    position: absolute;
+    right: 30px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 14px;
+}

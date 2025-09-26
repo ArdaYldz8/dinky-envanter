@@ -93,6 +93,9 @@ export async function loadDashboard() {
         </div>
     `;
 
+    // Wait for DOM to be fully rendered
+    await new Promise(resolve => setTimeout(resolve, 200));
+
     // Load dashboard components
     await Promise.all([
         renderKpiCards(),
@@ -276,6 +279,8 @@ async function renderAttendanceChart() {
         const chartElement = container.querySelector('.chart-widget__body');
         if (!chartElement) {
             console.error('Chart element not found for attendance chart');
+            console.error('Container found:', container);
+            console.error('Available children:', container.children);
             return;
         }
         
@@ -463,6 +468,8 @@ async function renderProjectDensityChart() {
         const chartElement = container.querySelector('.sidebar-widget__body');
         if (!chartElement) {
             console.error('Chart element not found for project density chart');
+            console.error('Container found:', container);
+            console.error('Available children:', container.children);
             return;
         }
         
@@ -599,7 +606,7 @@ function showProjectPersonnelModal(projectName, personnelDetails) {
 async function getTasksForToday() {
     try {
         const today = new Date().toISOString().split('T')[0];
-        const { data: tasks } = await taskService.getAll();
+        const { data: tasks } = await taskService.getTasksWithPersonnel();
 
         if (!tasks) return { completed: 0, pending: 0 };
 

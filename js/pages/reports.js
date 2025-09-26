@@ -576,7 +576,7 @@ window.generateDailyReport = async function() {
                 return sum;
             }, 0);
 
-            const totalOvertimePay = totalOvertime * (attendance[0]?.employee.daily_wage / 9 || 0);
+            const totalOvertimePay = totalOvertime * (attendance[0]?.employee.daily_wage / 9 || 0) * 1.5;
             const totalGross = totalDailyWage + totalOvertimePay;
 
             reportContainer.innerHTML = `
@@ -624,7 +624,7 @@ window.generateDailyReport = async function() {
                             ${attendance.map(record => {
                                 const dailyPay = record.status === 'Tam Gün' ? record.employee.daily_wage :
                                                 record.status === 'Yarım Gün' ? record.employee.daily_wage / 2 : 0;
-                                const overtimePay = (record.overtime_hours || 0) * (record.employee.daily_wage / 9);
+                                const overtimePay = (record.overtime_hours || 0) * (record.employee.daily_wage / 9) * 1.5;
                                 const totalPay = dailyPay + overtimePay;
 
                                 return `
@@ -764,11 +764,11 @@ window.generateWeeklyReport = async function() {
                     const customHours = record.custom_hours || 0;
                     const workDays = customHours / 9; // 9 saatlik gün standardına göre
                     employeeData[empId].totalDays += workDays;
-                    employeeData[empId].totalEarnings += (record.employee.daily_wage / 9) * customHours;
+                    employeeData[empId].totalEarnings += (record.employee.daily_wage / 9) * customHours * 1.5;
                 }
                 
                 employeeData[empId].totalOvertime += record.overtime_hours || 0;
-                employeeData[empId].totalEarnings += (record.overtime_hours || 0) * (record.employee.daily_wage / 9);
+                employeeData[empId].totalEarnings += (record.overtime_hours || 0) * (record.employee.daily_wage / 9) * 1.5;
             });
             
             const weekDays = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
@@ -904,7 +904,7 @@ window.exportDailyReport = function() {
     data.forEach(record => {
         const dailyPay = record.status === 'Tam Gün' ? record.employee.daily_wage :
                         record.status === 'Yarım Gün' ? record.employee.daily_wage / 2 : 0;
-        const overtimePay = (record.overtime_hours || 0) * (record.employee.daily_wage / 9);
+        const overtimePay = (record.overtime_hours || 0) * (record.employee.daily_wage / 9) * 1.5;
         const totalPay = dailyPay + overtimePay;
         const workHours = record.status === 'Tam Gün' ? '09:00' :
                          record.status === 'Yarım Gün' ? '04:30' : '00:00';
@@ -1223,7 +1223,7 @@ window.generateEmployeeReport = async function() {
         // Calculate financial summary
         const dailyWage = employee.daily_wage;
         const totalEarnings = totalDays * dailyWage;
-        const overtimeEarnings = totalOvertime * (dailyWage / 9);
+        const overtimeEarnings = totalOvertime * (dailyWage / 9) * 1.5;
         const grossEarnings = totalEarnings + overtimeEarnings;
 
         let totalAdvances = 0;
@@ -1336,7 +1336,7 @@ window.generateEmployeeReport = async function() {
                             </tr>
                             <tr>
                                 <td class="desc-col">Mesai Ücreti</td>
-                                <td class="calc-col">${totalOvertime} saat x ${formatter.currency(dailyWage/9)}</td>
+                                <td class="calc-col">${totalOvertime} saat x ${formatter.currency(dailyWage/9 * 1.5)}</td>
                                 <td class="amount-col">${formatter.currency(overtimeEarnings)}</td>
                             </tr>
                             <tr class="subtotal-row">
@@ -1492,7 +1492,7 @@ window.exportEmployeeReport = function() {
     const { employee, attendance, transactions, statistics, startDate, endDate } = window.currentEmployeeReportData;
     const reportDate = new Date().toLocaleDateString('tr-TR');
     const dailyWage = employee.daily_wage;
-    const overtimeRate = dailyWage / 9;
+    const overtimeRate = (dailyWage / 9) * 1.5;
 
     let csv = '\ufeff';
 
@@ -1553,7 +1553,7 @@ window.exportEmployeeReport = function() {
         const dayNames = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
         const dayEarning = record.status === 'Tam Gün' ? dailyWage :
                           record.status === 'Yarım Gün' ? dailyWage / 2 :
-                          record.status === 'Serbest Saat' ? (dailyWage / 9) * (record.custom_hours || 0) : 0;
+                          record.status === 'Serbest Saat' ? (dailyWage / 9) * (record.custom_hours || 0) * 1.5 : 0;
         const overtimeEarning = (record.overtime_hours || 0) * overtimeRate;
         const totalDayEarning = dayEarning + overtimeEarning;
 

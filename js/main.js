@@ -9,6 +9,7 @@ import { loadReports } from './pages/reports.js';
 import { loadSettings } from './pages/settings.js';
 import { loadTasks } from './pages/tasks.js';
 import { loadCustomers } from './pages/customers.js';
+import { loadQuotes } from './pages/quotes.js';
 import { Toast } from './utils/toast.js';
 
 // Router configuration
@@ -19,6 +20,7 @@ const routes = {
     'stock': loadStock,
     'barcode': loadBarcode,
     'customers': loadCustomers,
+    'quotes': loadQuotes,
     'reports': loadReports,
     'tasks': loadTasks,
     'settings': loadSettings
@@ -30,9 +32,9 @@ let currentUser = null;
 
 // Role-based permissions
 const rolePermissions = {
-    admin: ['dashboard', 'personnel', 'attendance', 'stock', 'barcode', 'customers', 'reports', 'tasks', 'settings'],
+    admin: ['dashboard', 'personnel', 'attendance', 'stock', 'barcode', 'customers', 'quotes', 'reports', 'tasks', 'settings'],
     warehouse: ['dashboard', 'stock', 'barcode'],
-    accounting: ['dashboard', 'personnel', 'attendance', 'customers', 'reports', 'settings']
+    accounting: ['dashboard', 'personnel', 'attendance', 'customers', 'quotes', 'reports', 'settings']
 };
 
 // Check authentication
@@ -133,15 +135,39 @@ function getRoleDisplay(role) {
 // Hide unauthorized menu items
 function hideUnauthorizedMenus() {
     const allowedPages = rolePermissions[currentUser.role] || [];
-    
-    document.querySelectorAll('.nav-item').forEach(item => {
-        const link = item.querySelector('a[data-page]');
-        if (link) {
-            const page = link.dataset.page;
-            if (!allowedPages.includes(page)) {
-                item.style.display = 'none';
+
+    // Hide individual nav items and dropdown items
+    document.querySelectorAll('[data-page]').forEach(element => {
+        const page = element.dataset.page;
+        if (!allowedPages.includes(page)) {
+            if (element.classList.contains('dropdown-item')) {
+                element.style.display = 'none';
             } else {
-                item.style.display = '';
+                // For regular nav items, hide the parent li
+                const parentItem = element.closest('.nav-item');
+                if (parentItem) {
+                    parentItem.style.display = 'none';
+                }
+            }
+        } else {
+            if (element.classList.contains('dropdown-item')) {
+                element.style.display = '';
+            } else {
+                const parentItem = element.closest('.nav-item');
+                if (parentItem) {
+                    parentItem.style.display = '';
+                }
+            }
+        }
+    });
+
+    // Hide empty dropdowns
+    document.querySelectorAll('.nav-item').forEach(item => {
+        const dropdown = item.querySelector('.dropdown-menu');
+        if (dropdown) {
+            const visibleItems = dropdown.querySelectorAll('.dropdown-item:not([style*="display: none"])');
+            if (visibleItems.length === 0) {
+                item.style.display = 'none';
             }
         }
     });
@@ -217,14 +243,92 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // Setup navigation click handlers
 function setupNavigation() {
-    const navLinks = document.querySelectorAll('.nav-link');
-    
+    // Handle dropdown toggles
+    document.querySelectorAll('.nav-link.has-dropdown').forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            const dropdown = this.nextElementSibling;
+            const isOpen = dropdown.classList.contains('show');
+
+            // Close all other dropdowns
+            document.querySelectorAll('.dropdown-menu').forEach(menu => {
+                menu.classList.remove('show');
+                menu.previousElementSibling.classList.remove('open');
+            });
+
+            // Toggle current dropdown
+            if (!isOpen) {
+                dropdown.classList.add('show');
+                this.classList.add('open');
+            } else {
+                dropdown.classList.remove('show');
+                this.classList.remove('open');
+            }
+        });
+    });
+
+    // Handle sidebar toggle
+    const sidebarToggle = document.getElementById('sidebarToggle');
+    const sidebarExpandBtn = document.getElementById('sidebarExpandBtn');
+    const sidebar = document.getElementById('sidebar');
+
+    // Toggle from inside sidebar
+    if (sidebarToggle) {
+        sidebarToggle.addEventListener('click', function() {
+            sidebar.classList.add('collapsed');
+            // Save preference
+            localStorage.setItem('sidebarCollapsed', 'true');
+        });
+    }
+
+    // Expand button when collapsed
+    if (sidebarExpandBtn) {
+        sidebarExpandBtn.addEventListener('click', function() {
+            sidebar.classList.remove('collapsed');
+            // Save preference
+            localStorage.setItem('sidebarCollapsed', 'false');
+        });
+    }
+
+    // Restore sidebar state
+    if (localStorage.getItem('sidebarCollapsed') === 'true') {
+        sidebar.classList.add('collapsed');
+    }
+
+    // Handle regular nav links and dropdown items
+    const navLinks = document.querySelectorAll('.nav-link:not(.has-dropdown), .dropdown-item');
+
     navLinks.forEach(link => {
         link.addEventListener('click', async (e) => {
             e.preventDefault();
             const page = link.dataset.page;
-            await navigateTo(page);
+            if (page) {
+                // If it's a dropdown item, also highlight parent
+                if (link.classList.contains('dropdown-item')) {
+                    const parentDropdown = link.closest('.nav-item');
+                    if (parentDropdown) {
+                        const parentButton = parentDropdown.querySelector('.nav-link.has-dropdown');
+                        if (parentButton) {
+                            // Mark parent as active but don't add active class to dropdown button
+                            document.querySelectorAll('.nav-link.has-dropdown').forEach(btn => {
+                                btn.classList.remove('active');
+                            });
+                        }
+                    }
+                }
+                await navigateTo(page);
+            }
         });
+    });
+
+    // Close dropdowns when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.nav-item')) {
+            document.querySelectorAll('.dropdown-menu').forEach(menu => {
+                menu.classList.remove('show');
+                menu.previousElementSibling.classList.remove('open');
+            });
+        }
     });
 }
 
@@ -256,9 +360,19 @@ async function navigateTo(page) {
     window.location.hash = page;
     
     // Update active nav link
-    document.querySelectorAll('.nav-link').forEach(link => {
+    document.querySelectorAll('.nav-link, .dropdown-item').forEach(link => {
         if (link.dataset.page === page) {
             link.classList.add('active');
+            // If it's a dropdown item, also mark parent as active
+            if (link.classList.contains('dropdown-item')) {
+                const parentItem = link.closest('.nav-item');
+                if (parentItem) {
+                    const parentLink = parentItem.querySelector('.nav-link.has-dropdown');
+                    if (parentLink) {
+                        parentLink.classList.add('active');
+                    }
+                }
+            }
         } else {
             link.classList.remove('active');
         }

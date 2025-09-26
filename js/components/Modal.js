@@ -7,9 +7,11 @@ export class Modal {
             size: 'medium', // small, medium, large
             closeButton: true,
             backdrop: true,
+            buttons: [], // Add buttons support
             ...options
         };
         this.modal = null;
+        this.element = null; // Add element reference for compatibility
         this.onClose = null;
     }
 
@@ -31,16 +33,24 @@ export class Modal {
                     <div class="modal-body">
                         ${this.options.content}
                     </div>
+                    ${this.options.buttons.length > 0 ? `
+                    <div class="modal-footer">
+                        ${this.options.buttons.map((btn, index) =>
+                            `<button class="btn ${btn.class || 'btn-secondary'}" data-button-index="${index}">${btn.text}</button>`
+                        ).join('')}
+                    </div>
+                    ` : ''}
                 </div>
             </div>
         `;
 
         container.appendChild(this.modal);
+        this.element = this.modal; // Set element reference for compatibility
         this.attachEvents();
-        
+
         // Show animation
         setTimeout(() => this.modal.classList.add('show'), 10);
-        
+
         return this;
     }
 
@@ -56,6 +66,17 @@ export class Modal {
             const backdrop = this.modal.querySelector('.modal-backdrop');
             backdrop.addEventListener('click', () => this.close());
         }
+
+        // Button clicks
+        this.options.buttons.forEach((btn, index) => {
+            const buttonElement = this.modal.querySelector(`[data-button-index="${index}"]`);
+            if (buttonElement && btn.click) {
+                buttonElement.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    btn.click(this);
+                });
+            }
+        });
 
         // Escape key
         this.escapeHandler = (e) => {

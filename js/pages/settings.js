@@ -38,6 +38,9 @@ export async function loadSettings() {
                     <li class="tab-item" data-tab="activity">
                         <i class="fas fa-history"></i> Aktivite İzleme
                     </li>
+                    <li class="tab-item" data-tab="admin">
+                        <i class="fas fa-clock"></i> Ek Mesai Yönetimi
+                    </li>
                     ` : ''}
                 </ul>
                 
@@ -302,6 +305,79 @@ export async function loadSettings() {
                             </div>
                         </div>
                     </div>
+
+                    <div class="tab-pane" id="adminTab">
+                        <div class="admin-section">
+                            <h2><i class="fas fa-clock"></i> Ek Mesai Yönetimi</h2>
+
+                            <!-- Overtime Management Section -->
+                            <div class="settings-card">
+                                <div class="settings-card-header">
+                                    <div>
+                                        <h3><i class="fas fa-filter"></i> Arama ve Filtreleme</h3>
+                                        <p class="text-muted">Personellerin ek mesai kayıtlarını arayın ve filtreleyin</p>
+                                    </div>
+                                    <div class="admin-badge">
+                                        <span class="badge badge-danger"><i class="fas fa-shield-alt"></i> Admin</span>
+                                    </div>
+                                </div>
+
+                                <div class="settings-card-body">
+                                    <div class="admin-overtime-section">
+                                        <!-- Search and Filter -->
+                                        <div class="overtime-filters">
+                                            <div class="filter-row">
+                                                <div class="filter-group">
+                                                    <label>Tarih Aralığı:</label>
+                                                    <div style="display: flex; gap: 8px;">
+                                                        <input type="date" id="overtimeStartDate" class="form-control"
+                                                               value="${new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}">
+                                                        <input type="date" id="overtimeEndDate" class="form-control"
+                                                               value="${new Date().toISOString().split('T')[0]}">
+                                                    </div>
+                                                </div>
+                                                <div class="filter-group">
+                                                    <label>Personel:</label>
+                                                    <select id="overtimeEmployeeFilter" class="form-control">
+                                                        <option value="">Tüm Personel</option>
+                                                    </select>
+                                                </div>
+                                                <div class="filter-group">
+                                                    <button class="btn btn-primary" onclick="window.loadOvertimeRecords()">
+                                                        <i class="fas fa-search"></i> Ara
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Overtime Records Table -->
+                                        <div class="overtime-records-table">
+                                            <div class="table-responsive">
+                                                <table class="table">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Tarih</th>
+                                                            <th>Personel</th>
+                                                            <th>Ek Mesai Saati</th>
+                                                            <th>Not</th>
+                                                            <th>İşlemler</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody id="overtimeRecordsTableBody">
+                                                        <tr>
+                                                            <td colspan="5" class="text-center text-muted">
+                                                                <i class="fas fa-search"></i> Arama yapmak için yukarıdaki filtreleri kullanın
+                                                            </td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     ` : ''}
                 </div>
             </div>
@@ -346,6 +422,11 @@ function setupTabs() {
             if (tabId === 'activity' && isAdmin()) {
                 loadActivitySummary();
                 loadActivityLogs();
+            }
+
+            // Load admin data when admin tab is activated
+            if (tabId === 'admin' && isAdmin()) {
+                loadEmployeesForOvertimeFilter();
             }
         });
     });
@@ -1262,3 +1343,264 @@ async function loadMFAAuditLog(userId) {
         tbody.innerHTML = '<tr><td colspan="3" class="text-center text-danger">Kayıtlar yüklenemedi</td></tr>';
     }
 }
+
+// === OVERTIME ADMIN FUNCTIONS ===
+
+// Load employees for overtime filter
+async function loadEmployeesForOvertimeFilter() {
+    if (!isAdmin()) return;
+
+    try {
+        const { data: employees, error } = await supabase
+            .from('employees')
+            .select('id, full_name')
+            .eq('is_active', true)
+            .order('full_name', { ascending: true });
+
+        if (error) throw error;
+
+        const select = document.getElementById('overtimeEmployeeFilter');
+        if (select) {
+            select.innerHTML = '<option value="">Tüm Personel</option>' +
+                employees.map(emp => `<option value="${emp.id}">${emp.full_name}</option>`).join('');
+        }
+    } catch (error) {
+        console.error('Load employees for overtime filter error:', error);
+        console.error('Error details:', error.message, error.details);
+        Toast.error('Personel listesi yüklenemedi: ' + (error.message || 'Bilinmeyen hata'));
+    }
+}
+
+// Load overtime records for admin
+window.loadOvertimeRecords = async function() {
+    if (!isAdmin()) {
+        Toast.error('Bu işlem için yönetici yetkisi gerekli');
+        return;
+    }
+
+    const startDate = document.getElementById('overtimeStartDate').value;
+    const endDate = document.getElementById('overtimeEndDate').value;
+    const employeeId = document.getElementById('overtimeEmployeeFilter').value;
+
+    if (!startDate || !endDate) {
+        Toast.error('Tarih aralığı seçiniz');
+        return;
+    }
+
+    try {
+        const tbody = document.getElementById('overtimeRecordsTableBody');
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</td></tr>';
+
+        let query = supabase
+            .from('attendance_records')
+            .select(`
+                id,
+                work_date,
+                overtime_hours,
+                overtime_note,
+                employee_id,
+                employees(id, full_name)
+            `)
+            .gte('work_date', startDate)
+            .lte('work_date', endDate)
+            .gt('overtime_hours', 0)
+            .order('work_date', { ascending: false });
+
+        if (employeeId) {
+            query = query.eq('employee_id', employeeId);
+        }
+
+        const { data: records, error } = await query;
+
+        if (error) throw error;
+
+        if (!records || records.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Bu tarih aralığında ek mesai kaydı bulunamadı</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = records.map(record => `
+            <tr>
+                <td>${formatter.dateDisplay(record.work_date)}</td>
+                <td><strong>${record.employees.full_name}</strong></td>
+                <td class="text-center">
+                    <span class="badge badge-info">${record.overtime_hours} saat</span>
+                </td>
+                <td>${record.overtime_note || '<span class="text-muted">-</span>'}</td>
+                <td>
+                    <div class="btn-group">
+                        <button class="btn btn-sm btn-outline-warning"
+                                onclick="window.adminEditOvertime('${record.id}')"
+                                title="Ek mesai düzenle">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger"
+                                onclick="window.adminDeleteOvertime('${record.id}', '${record.employees.full_name}', '${record.overtime_hours}')"
+                                title="Ek mesai sil">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+
+    } catch (error) {
+        console.error('Load overtime records error:', error);
+        console.error('Error details:', error.message, error.details);
+        Toast.error('Ek mesai kayıtları yüklenemedi: ' + (error.message || 'Bilinmeyen hata'));
+        const tbody = document.getElementById('overtimeRecordsTableBody');
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Kayıtlar yüklenemedi</td></tr>';
+    }
+};
+
+// Admin edit overtime
+window.adminEditOvertime = async function(recordId) {
+    if (!isAdmin()) {
+        Toast.error('Bu işlem için yönetici yetkisi gerekli');
+        return;
+    }
+
+    try {
+        // Get current record
+        const { data: record, error } = await supabase
+            .from('attendance_records')
+            .select(`
+                id,
+                work_date,
+                overtime_hours,
+                overtime_note,
+                employee_id,
+                employees(full_name)
+            `)
+            .eq('id', recordId)
+            .single();
+
+        if (error) throw error;
+
+        const modal = new Modal({
+            title: `${record.employees.full_name} - Ek Mesai Düzenle`,
+            content: `
+                <div class="form-group">
+                    <label>Tarih:</label>
+                    <p class="font-weight-bold text-info">${formatter.dateDisplay(record.work_date)}</p>
+                </div>
+                <div class="form-group">
+                    <label for="adminOvertimeHours">Ek Mesai Saati:</label>
+                    <input type="number" id="adminOvertimeHours" class="form-control"
+                           min="0" max="12" step="0.5"
+                           value="${record.overtime_hours}"
+                           placeholder="Ek mesai saati girin">
+                    <small class="text-muted">0.5 saat artışlarla girin (maksimum 12 saat)</small>
+                </div>
+                <div class="form-group">
+                    <label for="adminOvertimeNote">Not:</label>
+                    <textarea id="adminOvertimeNote" class="form-control" rows="3"
+                              placeholder="Ek mesai ile ilgili not...">${record.overtime_note || ''}</textarea>
+                </div>
+                <div class="alert alert-warning">
+                    <i class="fas fa-shield-alt"></i> <strong>Yönetici İşlemi:</strong> Bu değişiklik sistem günlüklerine kaydedilecektir.
+                </div>
+            `,
+            buttons: [
+                {
+                    text: 'İptal',
+                    class: 'btn-secondary',
+                    click: (modal) => modal.close()
+                },
+                {
+                    text: 'Güncelle',
+                    class: 'btn-primary',
+                    click: async (modal) => {
+                        const newHours = parseFloat(modal.element.querySelector('#adminOvertimeHours').value) || 0;
+                        const note = modal.element.querySelector('#adminOvertimeNote').value.trim();
+
+                        if (newHours < 0 || newHours > 12) {
+                            Toast.error('Ek mesai saati 0-12 arasında olmalıdır');
+                            return;
+                        }
+
+                        try {
+                            const { error: updateError } = await supabase
+                                .from('attendance_records')
+                                .update({
+                                    overtime_hours: newHours,
+                                    overtime_note: note
+                                })
+                                .eq('id', recordId);
+
+                            if (updateError) throw updateError;
+
+                            Toast.success('Ek mesai kaydı güncellendi');
+                            modal.close();
+                            window.loadOvertimeRecords(); // Refresh the table
+                        } catch (error) {
+                            console.error('Update overtime error:', error);
+                            Toast.error('Ek mesai güncellenemedi');
+                        }
+                    }
+                }
+            ]
+        });
+
+        modal.show();
+
+    } catch (error) {
+        console.error('Get overtime record error:', error);
+        Toast.error('Kayıt bilgileri alınamadı');
+    }
+};
+
+// Admin delete overtime
+window.adminDeleteOvertime = async function(recordId, employeeName, hours) {
+    if (!isAdmin()) {
+        Toast.error('Bu işlem için yönetici yetkisi gerekli');
+        return;
+    }
+
+    const modal = new Modal({
+        title: 'Ek Mesai Kaydını Sil',
+        content: `
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle"></i>
+                <strong>${employeeName}</strong> personelinin <strong>${hours} saat</strong> ek mesai kaydını tamamen silmek istediğinizden emin misiniz?
+            </div>
+            <div class="alert alert-warning">
+                <i class="fas fa-shield-alt"></i> <strong>Yönetici İşlemi:</strong> Bu işlem sistem günlüklerine kaydedilecek ve geri alınamayacaktır.
+            </div>
+            <p class="text-muted">Bu işlem kayıttaki ek mesai saatini sıfırlar, puantaj kaydının tamamını silmez.</p>
+        `,
+        buttons: [
+            {
+                text: 'İptal',
+                class: 'btn-secondary',
+                click: (modal) => modal.close()
+            },
+            {
+                text: 'Sil',
+                class: 'btn-danger',
+                click: async (modal) => {
+                    try {
+                        const { error } = await supabase
+                            .from('attendance_records')
+                            .update({
+                                overtime_hours: 0,
+                                overtime_note: ''
+                            })
+                            .eq('id', recordId);
+
+                        if (error) throw error;
+
+                        Toast.success('Ek mesai kaydı silindi');
+                        modal.close();
+                        window.loadOvertimeRecords(); // Refresh the table
+                    } catch (error) {
+                        console.error('Delete overtime error:', error);
+                        Toast.error('Ek mesai silinemedi');
+                    }
+                }
+            }
+        ]
+    });
+
+    modal.show();
+};

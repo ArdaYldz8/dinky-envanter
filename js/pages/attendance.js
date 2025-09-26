@@ -2,6 +2,7 @@
 import { attendanceService, employeeService, projectService } from '../services/supabaseService.js';
 import { formatter } from '../utils/formatter.js';
 import { Toast } from '../utils/toast.js';
+import { Modal } from '../components/Modal.js';
 
 // Helper function to get current user ID
 function getCurrentUserId() {
@@ -63,7 +64,7 @@ export async function loadAttendance() {
             <div class="info-bar">
                 <p><i class="fas fa-info-circle text-info"></i> Değişiklik yaptığınız satırlar vurgulanacaktır. Kaydet butonuna tıklayarak değişiklikleri kaydedebilirsiniz.</p>
                 <p><i class="fas fa-clock text-primary"></i> <strong>Çalışma Saatleri:</strong> Tam gün = 9 saat, Yarım gün = 4.5 saat, Serbest Saat = manuel giriş yapılır.</p>
-                <p><i class="fas fa-plus-circle text-success"></i> <strong>Ek Mesai:</strong> Normal mesai saatlerinin üzerine yapılan ek çalışma saatleridir (normal ücret ile hesaplanır).</p>
+                <p><i class="fas fa-plus-circle text-success"></i> <strong>Ek Mesai:</strong> Normal mesai saatlerinin üzerine yapılan ek çalışma saatleridir (1.5 kat ücret ile hesaplanır).</p>
                 ${isAccounting ? `<p><i class="fas fa-exclamation-triangle text-warning"></i> <strong>Muhasebe Kullanıcısı:</strong> Sadece günlük tarih için puantaj girişi yapabilirsiniz.</p>` : ''}
             </div>
             
@@ -138,6 +139,7 @@ async function loadAttendanceData(date) {
             status: attendanceMap[emp.id]?.status || 'Tam Gün',
             project_id: attendanceMap[emp.id]?.project_id || null,
             overtime_hours: attendanceMap[emp.id]?.overtime_hours || 0,
+            overtime_note: attendanceMap[emp.id]?.overtime_note || '',
             custom_hours: attendanceMap[emp.id]?.custom_hours || 0,
             record_id: attendanceMap[emp.id]?.id || null,
             isModified: false
@@ -197,16 +199,29 @@ async function loadAttendanceData(date) {
                     </select>
                 </td>
                 <td>
-                    <input type="number" class="form-control overtime-hours" 
-                           data-index="${index}" 
-                           placeholder="0" 
-                           min="0" 
-                           max="12" 
-                           step="0.5" 
-                           value="${record.overtime_hours || ''}"
-                           style="width: 80px; text-align: center;"
-                           ${record.status === 'Gelmedi' ? 'disabled' : ''}>
-                    <small class="text-muted">ek saat</small>
+                    <div class="overtime-container" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                        <div style="display: flex; flex-direction: column; align-items: center;">
+                            <input type="number" class="form-control overtime-hours"
+                                   data-index="${index}"
+                                   placeholder="0"
+                                   min="0"
+                                   max="12"
+                                   step="0.5"
+                                   value="${record.overtime_hours || ''}"
+                                   style="width: 70px; text-align: center; margin-bottom: 2px;"
+                                   ${record.status === 'Gelmedi' ? 'disabled' : ''}>
+                            <small class="text-muted" style="font-size: 10px;">saat</small>
+                        </div>
+                        <div class="btn-group-vertical" style="gap: 2px;">
+                            <button class="btn btn-xs btn-outline-info"
+                                    onclick="window.addOvertimeNote(${index})"
+                                    title="Ek mesai notu ekle/düzenle"
+                                    style="font-size: 10px; padding: 2px 6px;"
+                                    ${!record.overtime_hours || record.overtime_hours == 0 ? 'disabled' : ''}>
+                                <i class="fas fa-sticky-note"></i>
+                            </button>
+                        </div>
+                    </div>
                 </td>
             </tr>
         `).join('');
@@ -263,6 +278,7 @@ function setupAttendanceListeners() {
             const index = parseInt(e.target.dataset.index);
             const value = parseFloat(e.target.value) || 0;
             updateAttendanceRecord(index, 'overtime_hours', value);
+            updateOvertimeButtons(index);
         });
     });
 
@@ -416,6 +432,7 @@ window.saveAttendance = async function() {
                 status: record.status,
                 project_id: record.project_id || null,
                 overtime_hours: parseFloat(record.overtime_hours) || 0.00,
+                overtime_note: record.overtime_note || '',
                 custom_hours: record.status === 'Serbest Saat' ? parseFloat(record.custom_hours) || 0.00 : 0.00
             };
 
@@ -441,3 +458,63 @@ window.saveAttendance = async function() {
         Toast.error('Puantaj kaydedilirken hata oluştu');
     }
 };
+
+// Update overtime buttons enabled/disabled state
+function updateOvertimeButtons(index) {
+    const record = currentAttendanceData[index];
+    const hasOvertime = record.overtime_hours && record.overtime_hours > 0;
+
+    const row = document.querySelector(`tr[data-index="${index}"]`);
+    if (!row) return;
+
+    const noteBtn = row.querySelector('.btn-outline-info');
+    const editBtn = row.querySelector('.btn-outline-warning');
+
+    if (noteBtn) noteBtn.disabled = !hasOvertime;
+    if (editBtn) editBtn.disabled = !hasOvertime;
+}
+
+// Overtime note functionality
+window.addOvertimeNote = function(index) {
+    const record = currentAttendanceData[index];
+    if (!record.overtime_hours || record.overtime_hours == 0) {
+        Toast.error('Ek mesai saati olmayan personel için not eklenemez');
+        return;
+    }
+
+    const modal = new Modal({
+        title: `${record.employee_name} - Ek Mesai Notu`,
+        content: `
+            <div class="form-group">
+                <label>Ek Mesai Saati:</label>
+                <p class="font-weight-bold text-primary">${record.overtime_hours} saat</p>
+            </div>
+            <div class="form-group">
+                <label for="overtimeNote">Not:</label>
+                <textarea id="overtimeNote" class="form-control" rows="4"
+                          placeholder="Ek mesai ile ilgili not ekleyin...">${record.overtime_note || ''}</textarea>
+            </div>
+        `,
+        buttons: [
+            {
+                text: 'İptal',
+                class: 'btn-secondary',
+                click: (modal) => modal.close()
+            },
+            {
+                text: 'Kaydet',
+                class: 'btn-primary',
+                click: (modal) => {
+                    const note = modal.element.querySelector('#overtimeNote').value.trim();
+                    updateAttendanceRecord(index, 'overtime_note', note);
+                    Toast.success('Ek mesai notu güncellendi');
+                    modal.close();
+                }
+            }
+        ]
+    });
+
+    modal.show();
+};
+
+

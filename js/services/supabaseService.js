@@ -1126,7 +1126,7 @@ export const payrollService = {
                 });
 
                 const totalDays = fullDays + (halfDays * 0.5) + (customHours / 9);
-                const overtimePayment = overtimeHours * (employee.daily_wage / 9);
+                const overtimePayment = overtimeHours * (employee.daily_wage / 9) * 1.5;
                 const grossSalary = (totalDays * employee.daily_wage) + overtimePayment;
 
                 // Get transactions (advances and deductions)
@@ -1177,16 +1177,10 @@ export const taskService = {
             const { data: { user }, error: userError } = await supabase.auth.getUser();
             console.log('Current user for tasks fetch:', user);
             
+            // Simplified approach - get tasks without employee details for now
             const { data, error } = await supabase
                 .from('tasks')
-                .select(`
-                    *,
-                    task_personnel!assigned_to_id (
-                        id,
-                        name,
-                        department
-                    )
-                `)
+                .select('*')
                 .order('created_at', { ascending: false });
             
             if (error) {
@@ -1323,8 +1317,22 @@ export const customerService = {
     async create(customer) {
         // Auto-generate customer code if not provided
         if (!customer.customer_code) {
-            const { data: seqData } = await supabase.rpc('nextval', { sequence_name: 'customer_code_seq' });
-            customer.customer_code = `C${String(seqData).padStart(4, '0')}`;
+            // Get the highest customer code to generate next one
+            const { data: lastCustomer } = await supabase
+                .from('customers')
+                .select('customer_code')
+                .like('customer_code', 'C%')
+                .order('customer_code', { ascending: false })
+                .limit(1);
+
+            let nextNumber = 1;
+            if (lastCustomer && lastCustomer.length > 0) {
+                const lastCode = lastCustomer[0].customer_code;
+                const lastNumber = parseInt(lastCode.substring(1));
+                nextNumber = lastNumber + 1;
+            }
+
+            customer.customer_code = `C${String(nextNumber).padStart(4, '0')}`;
         }
 
         const { data, error } = await supabase
@@ -1333,23 +1341,9 @@ export const customerService = {
             .select()
             .single();
 
-        // Activity logging
+        // Activity logging (simplified)
         if (!error && data) {
-            try {
-                const userInfo = this.getCurrentUserInfo();
-                await supabase.rpc('log_user_activity', {
-                    p_action_type: 'CREATE',
-                    p_table_name: 'customers',
-                    p_record_id: data.id,
-                    p_description: `Yeni cari hesap: ${data.company_name} (${data.customer_code})`,
-                    p_new_values: data,
-                    p_user_id: userInfo.id,
-                    p_user_name: userInfo.name,
-                    p_user_role: userInfo.role
-                });
-            } catch (logError) {
-                console.warn('Customer create activity logging failed:', logError);
-            }
+            console.log(`Customer created: ${data.company_name} (${data.customer_code})`);
         }
 
         return { data, error };
@@ -1383,62 +1377,69 @@ export const customerService = {
             .select()
             .single();
 
-        // Activity logging
+        // Activity logging (simplified)
         if (!error && data) {
-            try {
-                const userInfo = this.getCurrentUserInfo();
-                await supabase.rpc('log_user_activity', {
-                    p_action_type: 'UPDATE',
-                    p_table_name: 'customers',
-                    p_record_id: data.id,
-                    p_description: `Cari hesap güncellendi: ${data.company_name}`,
-                    p_old_values: oldData,
-                    p_new_values: data,
-                    p_user_id: userInfo.id,
-                    p_user_name: userInfo.name,
-                    p_user_role: userInfo.role
-                });
-            } catch (logError) {
-                console.warn('Customer update activity logging failed:', logError);
-            }
+            console.log(`Customer updated: ${data.company_name} (${data.customer_code})`);
         }
 
         return { data, error };
     },
 
     async delete(id) {
-        // Get data before deletion
-        const { data: oldData } = await supabase
-            .from('customers')
-            .select()
-            .eq('id', id)
-            .single();
+        try {
+            console.log('Starting customer deletion for ID:', id);
 
-        const { error } = await supabase
-            .from('customers')
-            .delete()
-            .eq('id', id);
+            // Get data before deletion
+            const { data: oldData, error: selectError } = await supabase
+                .from('customers')
+                .select()
+                .eq('id', id)
+                .single();
 
-        // Activity logging
-        if (!error && oldData) {
-            try {
-                const userInfo = this.getCurrentUserInfo();
-                await supabase.rpc('log_user_activity', {
-                    p_action_type: 'DELETE',
-                    p_table_name: 'customers',
-                    p_record_id: oldData.id,
-                    p_description: `Cari hesap silindi: ${oldData.company_name}`,
-                    p_old_values: oldData,
-                    p_user_id: userInfo.id,
-                    p_user_name: userInfo.name,
-                    p_user_role: userInfo.role
-                });
-            } catch (logError) {
-                console.warn('Customer delete activity logging failed:', logError);
+            if (selectError) {
+                console.error('Error fetching customer before delete:', selectError);
+                return { error: selectError };
             }
-        }
 
-        return { error };
+            if (!oldData) {
+                console.error('Customer not found for ID:', id);
+                return { error: { message: 'Customer not found' } };
+            }
+
+            console.log('Found customer to delete:', oldData.company_name, oldData.customer_code);
+
+            // Perform deletion
+            const { error: deleteError } = await supabase
+                .from('customers')
+                .delete()
+                .eq('id', id);
+
+            if (deleteError) {
+                console.error('Delete operation failed:', deleteError);
+                return { error: deleteError };
+            }
+
+            console.log('Delete operation completed successfully');
+
+            // Verify deletion by trying to fetch the record again
+            const { data: verifyData } = await supabase
+                .from('customers')
+                .select()
+                .eq('id', id)
+                .single();
+
+            if (verifyData) {
+                console.warn('Warning: Customer still exists after delete operation');
+                return { error: { message: 'Delete operation did not complete properly' } };
+            }
+
+            console.log(`Customer successfully deleted: ${oldData.company_name} (${oldData.customer_code})`);
+            return { error: null };
+
+        } catch (error) {
+            console.error('Unexpected error during customer deletion:', error);
+            return { error };
+        }
     },
 
     async searchByName(searchTerm) {

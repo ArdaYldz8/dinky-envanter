@@ -854,14 +854,24 @@ window.deleteCustomer = async function(customerId) {
 
     if (confirmed) {
         try {
+            console.log('Attempting to delete customer:', customerId, customer.company_name);
             const { error } = await customerService.delete(customerId);
-            if (error) throw error;
 
-            Toast.success('Cari hesap silindi');
+            if (error) {
+                console.error('Delete service returned error:', error);
+                throw error;
+            }
+
+            console.log('Delete service completed successfully');
+            Toast.success('Cari hesap başarıyla silindi');
+
+            // Reload the customer data
             await loadCustomersData();
+            console.log('Customer data reloaded after deletion');
+
         } catch (error) {
             console.error('Customer delete error:', error);
-            Toast.error('Silme işlemi sırasında hata oluştu');
+            Toast.error(`Silme işlemi başarısız: ${error.message || 'Bilinmeyen hata'}`);
         }
     }
 };

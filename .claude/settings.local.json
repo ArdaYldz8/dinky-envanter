@@ -1,7 +1,16 @@
 {
   "permissions": {
     "allow": [
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(Start-Process \"http://localhost:8080\")",
+      "Bash(tasklist)",
+      "Bash(python:*)",
+      "mcp__supabase__list_projects",
+      "mcp__supabase__list_tables",
+      "WebSearch",
+      "Bash(Start-Process \"http://localhost:8000\")",
+      "Bash(powershell:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []

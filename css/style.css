@@ -2174,3 +2174,318 @@ body {
 .modified-row:hover {
     background: linear-gradient(135deg, #fef9e7, #fff3cd);
 }
+
+/* ===== ADMIN OPERATIONS SECTION ===== */
+.admin-section {
+    padding: 0;
+}
+
+.admin-section h2 {
+    color: #2c3e50;
+    font-size: 1.8rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.admin-section h2 i {
+    color: #e74c3c;
+    background: rgba(231, 76, 60, 0.1);
+    padding: 8px;
+    border-radius: 8px;
+    font-size: 1.1rem;
+}
+
+.admin-section > p.text-muted {
+    margin-bottom: 2rem;
+    color: #6c757d;
+    font-size: 1rem;
+    line-height: 1.5;
+}
+
+/* Settings Cards */
+.settings-card {
+    background: #ffffff;
+    border: 1px solid #e3e6f0;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    margin-bottom: 2rem;
+    overflow: hidden;
+    transition: all 0.2s ease;
+}
+
+.settings-card:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    transform: translateY(-2px);
+}
+
+.settings-card-header {
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    border-bottom: 1px solid #e3e6f0;
+    padding: 1.5rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.settings-card-header h3 {
+    color: #2c3e50;
+    font-size: 1.3rem;
+    font-weight: 600;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.settings-card-header h3 i {
+    color: #3498db;
+    background: rgba(52, 152, 219, 0.1);
+    padding: 6px;
+    border-radius: 6px;
+    font-size: 1rem;
+}
+
+.settings-card-header p.text-muted {
+    margin: 0.25rem 0 0 0;
+    color: #6c757d;
+    font-size: 0.9rem;
+}
+
+.admin-badge .badge {
+    padding: 6px 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.admin-badge .badge-danger {
+    background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+    border: none;
+}
+
+.settings-card-body {
+    padding: 2rem;
+}
+
+/* Overtime Filters */
+.overtime-filters {
+    background: #f8f9fa;
+    border: 1px solid #e3e6f0;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    align-items: end;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    min-width: 200px;
+}
+
+.filter-group label {
+    color: #2c3e50;
+    font-weight: 600;
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+.filter-group .form-control {
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+}
+
+.filter-group .form-control:focus {
+    border-color: #3498db;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+.filter-group .btn {
+    padding: 8px 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.filter-group .btn-primary {
+    background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+    border: none;
+}
+
+.filter-group .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+}
+
+/* Overtime Table */
+.overtime-table-container {
+    background: #ffffff;
+    border: 1px solid #e3e6f0;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.overtime-table {
+    margin: 0;
+}
+
+.overtime-table thead {
+    background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
+}
+
+.overtime-table thead th {
+    color: #ffffff;
+    font-weight: 600;
+    font-size: 0.9rem;
+    padding: 1rem 0.75rem;
+    border: none;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.overtime-table tbody td {
+    padding: 1rem 0.75rem;
+    vertical-align: middle;
+    border-bottom: 1px solid #f1f3f4;
+    font-size: 0.9rem;
+}
+
+.overtime-table tbody tr:hover {
+    background: rgba(52, 152, 219, 0.04);
+}
+
+.overtime-table .badge {
+    padding: 4px 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 12px;
+}
+
+.overtime-table .badge-info {
+    background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+    color: white;
+}
+
+.overtime-table .btn-group .btn {
+    padding: 4px 8px;
+    font-size: 0.75rem;
+    border-radius: 4px;
+    margin: 0 2px;
+}
+
+.overtime-table .btn-sm {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+}
+
+/* Statistics Section */
+.admin-overtime-stats {
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    border: 1px solid #e3e6f0;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.stat-card {
+    background: #ffffff;
+    border: 1px solid #e3e6f0;
+    border-radius: 8px;
+    padding: 1rem;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.stat-card h4 {
+    color: #2c3e50;
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.stat-card p {
+    color: #6c757d;
+    font-size: 0.9rem;
+    margin: 0.25rem 0 0 0;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .settings-card-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .filter-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .filter-group {
+        min-width: auto;
+    }
+
+    .overtime-table-container {
+        overflow-x: auto;
+    }
+
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Animation for smooth transitions */
+.admin-section * {
+    transition: all 0.2s ease;
+}
+
+.fade-in {
+    animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Modal Footer Styles */
+.modal-footer {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid #e3e6f0;
+    background: #f8f9fa;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    border-radius: 0 0 8px 8px;
+}
+
+.modal-footer .btn {
+    min-width: 80px;
+}
