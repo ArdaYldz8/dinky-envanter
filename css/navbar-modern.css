@@ -8,10 +8,9 @@
     position: fixed;
     left: 0;
     top: 0;
-    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    box-shadow: 2px 0 15px rgba(0, 0, 0, 0.15);
+    transition: width 0.2s ease;
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
     z-index: 1000;
-    overflow: hidden;
 }
 
 /* Logo Alanı */
@@ -46,36 +45,25 @@
 .sidebar-toggle-inner {
     background: rgba(255, 255, 255, 0.1);
     border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 8px;
+    border-radius: 6px;
     color: rgba(255, 255, 255, 0.8);
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    transition: all 0.2s ease;
     flex-shrink: 0;
 }
 
 .sidebar-toggle-inner:hover {
     background: rgba(255, 255, 255, 0.2);
     color: white;
-    transform: scale(1.1);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-}
-
-.sidebar-toggle-inner:active {
-    transform: scale(0.95);
 }
 
 .sidebar-toggle-inner i {
     font-size: 16px;
-    transition: transform 0.3s ease;
-}
-
-.sidebar.collapsed .sidebar-toggle-inner i {
-    transform: rotate(90deg);
 }
 
 /* Ana Menü */
@@ -97,30 +85,24 @@
     padding: 12px 20px;
     color: rgba(255, 255, 255, 0.85);
     text-decoration: none;
-    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    transition: all 0.2s ease;
     font-size: 14px;
     cursor: pointer;
     border: none;
     background: none;
     width: 100%;
     text-align: left;
-    border-radius: 8px;
-    margin: 2px 8px;
-    position: relative;
 }
 
 .nav-link:hover {
-    background: rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.1);
     color: white;
-    padding-left: 25px;
-    transform: translateX(2px);
 }
 
 .nav-link.active {
-    background: rgba(52, 152, 219, 0.25);
+    background: rgba(52, 152, 219, 0.2);
     color: #3498db;
     border-left: 3px solid #3498db;
-    box-shadow: 0 2px 8px rgba(52, 152, 219, 0.2);
 }
 
 .nav-link i {
@@ -146,10 +128,8 @@
 .dropdown-menu {
     max-height: 0;
     overflow: hidden;
-    transition: max-height 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    transition: max-height 0.3s ease;
     background: rgba(0, 0, 0, 0.2);
-    border-radius: 0 0 8px 8px;
-    margin-top: 2px;
 }
 
 .dropdown-menu.show {
@@ -215,15 +195,10 @@
 /* Collapsed State */
 .sidebar.collapsed {
     width: 60px;
-    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
 }
 
 .sidebar.collapsed .sidebar-header {
-    padding: 15px 5px;
-    justify-content: center;
-}
-
-.sidebar.collapsed .logo {
+    padding: 15px 10px;
     justify-content: center;
 }
 
@@ -233,19 +208,7 @@
 .sidebar.collapsed .user-info span,
 .sidebar.collapsed .nav-link::after,
 .sidebar.collapsed .sidebar-toggle-inner {
-    opacity: 0;
-    transform: translateX(-10px);
-    transition: all 0.2s ease;
-}
-
-/* Smooth hide for collapsed elements */
-.sidebar:not(.collapsed) .logo h2,
-.sidebar:not(.collapsed) .nav-link span,
-.sidebar:not(.collapsed) .user-info span,
-.sidebar:not(.collapsed) .sidebar-toggle-inner {
-    opacity: 1;
-    transform: translateX(0);
-    transition: all 0.3s ease 0.1s;
+    display: none;
 }
 
 .sidebar.collapsed .nav-link {
@@ -292,57 +255,42 @@
 /* Floating Toggle for Collapsed State */
 .sidebar-expand-btn {
     position: fixed;
-    top: 20px;
+    top: 25px;
     left: 70px;
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
     background: white;
-    border: 2px solid #e2e8f0;
-    border-radius: 8px;
-    color: #64748b;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    color: #2c3e50;
     cursor: pointer;
     display: none;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
     z-index: 999;
-    opacity: 0;
-    transform: translateX(-10px);
 }
 
 .sidebar.collapsed ~ .sidebar-expand-btn {
     display: flex;
-    opacity: 1;
-    transform: translateX(0);
 }
 
 .sidebar-expand-btn:hover {
-    background: #3498db;
+    background: #f8f9fa;
     border-color: #3498db;
-    color: white;
-    transform: translateX(3px) scale(1.05);
-    box-shadow: 0 6px 20px rgba(52, 152, 219, 0.3);
-}
-
-.sidebar-expand-btn:active {
-    transform: translateX(1px) scale(0.98);
+    color: #3498db;
 }
 
 .sidebar-expand-btn i {
     font-size: 16px;
-    transition: transform 0.2s ease;
-}
-
-.sidebar-expand-btn:hover i {
-    transform: translateX(1px);
 }
 
 /* Main Content Adjustment */
 .main-content {
     margin-left: 220px;
     padding: 20px;
-    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    transition: margin-left 0.2s ease;
     min-height: 100vh;
     background: #f5f6fa;
 }
