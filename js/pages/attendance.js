@@ -475,12 +475,23 @@ function updateOvertimeButtons(index) {
 }
 
 // Overtime note functionality
-window.addOvertimeNote = function(index) {
-    const record = currentAttendanceData[index];
-    if (!record.overtime_hours || record.overtime_hours == 0) {
-        Toast.error('Ek mesai saati olmayan personel için not eklenemez');
-        return;
-    }
+function addOvertimeNote(index) {
+    try {
+        console.log('addOvertimeNote called with index:', index);
+
+        if (!currentAttendanceData || !currentAttendanceData[index]) {
+            console.error('No attendance data for index:', index);
+            Toast.error('Kayıt bulunamadı');
+            return;
+        }
+
+        const record = currentAttendanceData[index];
+        console.log('Record:', record);
+
+        if (!record.overtime_hours || record.overtime_hours == 0) {
+            Toast.error('Ek mesai saati olmayan personel için not eklenemez');
+            return;
+        }
 
     const modal = new Modal({
         title: `${record.employee_name} - Ek Mesai Notu`,
@@ -505,16 +516,35 @@ window.addOvertimeNote = function(index) {
                 text: 'Kaydet',
                 class: 'btn-primary',
                 click: (modal) => {
-                    const note = modal.element.querySelector('#overtimeNote').value.trim();
-                    updateAttendanceRecord(index, 'overtime_note', note);
-                    Toast.success('Ek mesai notu güncellendi');
-                    modal.close();
+                    try {
+                        const noteElement = modal.element.querySelector('#overtimeNote');
+                        if (!noteElement) {
+                            console.error('Note textarea not found');
+                            Toast.error('Not alanı bulunamadı');
+                            return;
+                        }
+                        const note = noteElement.value.trim();
+                        console.log('Saving note:', note);
+                        updateAttendanceRecord(index, 'overtime_note', note);
+                        Toast.success('Ek mesai notu güncellendi');
+                        modal.close();
+                    } catch (error) {
+                        console.error('Error saving note:', error);
+                        Toast.error('Not kaydedilirken hata oluştu');
+                    }
                 }
             }
         ]
     });
 
     modal.show();
-};
+    } catch (error) {
+        console.error('Error in addOvertimeNote:', error);
+        Toast.error('Not ekleme işleminde hata oluştu');
+    }
+}
+
+// Export to window for global access
+window.addOvertimeNote = addOvertimeNote;
 
 
