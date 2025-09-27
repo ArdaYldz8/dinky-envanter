@@ -11,6 +11,7 @@ import { loadTasks } from './pages/tasks.js';
 import { loadCustomers } from './pages/customers.js';
 import { loadQuotes } from './pages/quotes.js';
 import { QualityControlPage } from './pages/quality-control.js';
+import { loadProjects } from './pages/projects.js';
 import { Toast } from './utils/toast.js';
 
 // Quality Control Page Loader
@@ -38,6 +39,7 @@ const routes = {
     'barcode': loadBarcode,
     'customers': loadCustomers,
     'quotes': loadQuotes,
+    'projects': loadProjects,
     'quality-control': loadQualityControl,
     'reports': loadReports,
     'tasks': loadTasks,
@@ -50,8 +52,8 @@ let currentUser = null;
 
 // Role-based permissions
 const rolePermissions = {
-    admin: ['dashboard', 'personnel', 'attendance', 'stock', 'barcode', 'customers', 'quotes', 'quality-control', 'reports', 'tasks', 'settings'],
-    warehouse: ['dashboard', 'stock', 'barcode', 'quality-control'],
+    admin: ['dashboard', 'personnel', 'attendance', 'stock', 'barcode', 'customers', 'quotes', 'projects', 'quality-control', 'reports', 'tasks', 'settings'],
+    warehouse: ['dashboard', 'stock', 'barcode', 'projects', 'quality-control'],
     accounting: ['dashboard', 'personnel', 'attendance', 'customers', 'quotes', 'reports', 'settings']
 };
 

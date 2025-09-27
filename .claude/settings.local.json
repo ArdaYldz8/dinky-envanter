@@ -12,7 +12,14 @@
       "Bash(powershell:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(timeout:*)",
+      "Bash(dir)",
+      "Bash(npx http-server:*)",
+      "Bash(findstr:*)",
+      "Bash(dir:*)",
+      "mcp__supabase__apply_migration",
+      "mcp__supabase__execute_sql"
     ],
     "deny": [],
     "ask": []
