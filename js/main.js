@@ -251,11 +251,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
     
+    // Setup navigation first
+    setupNavigation();
+
     // Load initial page
     await navigateTo('dashboard');
-
-    // Setup navigation after page is loaded
-    setupNavigation();
     
     // Setup hash change listener for browser back/forward
     window.addEventListener('hashchange', handleHashChange);
@@ -264,8 +264,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 // Setup navigation click handlers
 function setupNavigation() {
     // Handle dropdown toggles
-    document.querySelectorAll('.nav-link.has-dropdown').forEach(button => {
-        button.addEventListener('click', function(e) {
+    const dropdownButtons = document.querySelectorAll('.nav-link.has-dropdown');
+
+    dropdownButtons.forEach(button => {
+        button.onclick = function(e) {
             e.preventDefault();
             e.stopPropagation();
 
@@ -273,22 +275,22 @@ function setupNavigation() {
             const isOpen = dropdown.classList.contains('show');
 
             // Close all other dropdowns
-            document.querySelectorAll('.dropdown-menu').forEach(menu => {
-                menu.classList.remove('show');
-                if (menu.previousElementSibling) {
+            document.querySelectorAll('.dropdown-menu.show').forEach(menu => {
+                if (menu !== dropdown) {
+                    menu.classList.remove('show');
                     menu.previousElementSibling.classList.remove('open');
                 }
             });
 
             // Toggle current dropdown
-            if (!isOpen) {
-                dropdown.classList.add('show');
-                this.classList.add('open');
-            } else {
+            if (isOpen) {
                 dropdown.classList.remove('show');
                 this.classList.remove('open');
+            } else {
+                dropdown.classList.add('show');
+                this.classList.add('open');
             }
-        });
+        };
     });
 
     // Handle sidebar toggle

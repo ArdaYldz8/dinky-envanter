@@ -113,12 +113,21 @@
 
 /* Dropdown Arrow */
 .nav-link.has-dropdown {
-    cursor: pointer;
+    cursor: pointer !important;
     position: relative;
     background: none;
     border: none;
     width: 100%;
     text-align: left;
+    display: flex;
+    align-items: center;
+    padding: 12px 20px;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 14px;
+}
+
+.nav-link.has-dropdown span {
+    flex-grow: 1;
 }
 
 .nav-link.has-dropdown::after {
@@ -127,6 +136,7 @@
     font-weight: 900;
     margin-left: auto;
     transition: transform 0.3s ease;
+    font-size: 12px;
 }
 
 .nav-link.has-dropdown.open::after {
@@ -135,14 +145,26 @@
 
 /* Dropdown Menu */
 .dropdown-menu {
-    max-height: 0;
-    overflow: hidden;
-    transition: max-height 0.3s ease;
+    display: none;
     background: rgba(0, 0, 0, 0.2);
+    margin-left: 0;
+    padding-left: 0;
 }
 
 .dropdown-menu.show {
-    max-height: 300px;
+    display: block;
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .dropdown-item {
@@ -158,6 +180,7 @@
     width: 100%;
     text-align: left;
     cursor: pointer;
+    position: relative;
 }
 
 .dropdown-item:hover {
