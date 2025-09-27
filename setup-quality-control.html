@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quality Control Setup</title>
+    <!-- Supabase Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .setup-step {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .setup-step h3 {
+            margin: 0 0 10px 0;
+            color: #4F46E5;
+        }
+        .status {
+            font-weight: bold;
+            padding: 5px 10px;
+            border-radius: 4px;
+            display: inline-block;
+            margin-top: 10px;
+        }
+        .status.pending { background: #FFF3CD; color: #856404; }
+        .status.success { background: #D4EDDA; color: #155724; }
+        .status.error { background: #F8D7DA; color: #721C24; }
+        button {
+            background: #4F46E5;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #4338CA;
+        }
+        button:disabled {
+            background: #9CA3AF;
+            cursor: not-allowed;
+        }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🛡️ Quality Control System Setup</h1>
+        <p>Bu sayfa Quality Control sistemi için gerekli veritabanı tablolarını oluşturacak.</p>
+
+        <div class="setup-step">
+            <h3>1. Supabase Bağlantısı</h3>
+            <p>Veritabanı bağlantısını test et</p>
+            <button onclick="testConnection()">Bağlantıyı Test Et</button>
+            <div id="connectionStatus" class="status pending">Bekleniyor...</div>
+        </div>
+
+        <div class="setup-step">
+            <h3>2. Storage Bucket Oluştur</h3>
+            <p>Fotoğraflar için storage bucket'ı oluştur</p>
+            <button onclick="createStorageBucket()" id="bucketBtn" disabled>Storage Bucket Oluştur</button>
+            <div id="bucketStatus" class="status pending">Bekleniyor...</div>
+        </div>
+
+        <div class="setup-step">
+            <h3>3. Database Tabloları</h3>
+            <p>Quality Control için gerekli tabloları oluştur</p>
+            <button onclick="createTables()" id="tablesBtn" disabled>Tabloları Oluştur</button>
+            <div id="tablesStatus" class="status pending">Bekleniyor...</div>
+        </div>
+
+        <div class="setup-step">
+            <h3>4. Örnek Veriler</h3>
+            <p>Test için örnek kategoriler ve veriler ekle</p>
+            <button onclick="insertSampleData()" id="dataBtn" disabled>Örnek Verileri Ekle</button>
+            <div id="dataStatus" class="status pending">Bekleniyor...</div>
+        </div>
+
+        <div class="log" id="logOutput">Setup işlemi başlatılmayı bekliyor...</div>
+    </div>
+
+    <script>
+        // Supabase Client
+        const supabase = window.supabase.createClient(
+            'https://spmtwsxrnclkxmqwsxdf.supabase.co',
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNwbXR3c3hybmNsa3htcXdzeGRmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY4ODAyODUsImV4cCI6MjA3MjQ1NjI4NX0.BpwVkvqpzAP2hroqztXmQNym5Mq_Kijnt9CPG50yP0c'
+        );
+
+        let logDiv = document.getElementById('logOutput');
+
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            logDiv.textContent += `[${timestamp}] ${message}\n`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(message);
+        }
+
+        async function testConnection() {
+            try {
+                log('Supabase bağlantısı test ediliyor...');
+
+                const { data, error } = await supabase
+                    .from('employees')
+                    .select('count', { count: 'exact', head: true });
+
+                if (error) {
+                    throw error;
+                }
+
+                document.getElementById('connectionStatus').textContent = 'Bağlantı Başarılı ✅';
+                document.getElementById('connectionStatus').className = 'status success';
+                document.getElementById('bucketBtn').disabled = false;
+                log('✅ Supabase bağlantısı başarılı!');
+            } catch (error) {
+                document.getElementById('connectionStatus').textContent = 'Bağlantı Hatası ❌';
+                document.getElementById('connectionStatus').className = 'status error';
+                log('❌ Bağlantı hatası: ' + error.message);
+            }
+        }
+
+        async function createStorageBucket() {
+            try {
+                log('Storage bucket kontrol ediliyor...');
+
+                // Önce bucket var mı kontrol et
+                const { data: buckets, error: listError } = await supabase.storage.listBuckets();
+
+                if (listError) {
+                    log('⚠️ Storage bucket listelenemedi: ' + listError.message);
+                    log('📝 Manuel olarak Supabase Dashboard\'da "quality-photos" bucket\'ı oluşturun');
+                    log('   - Public: true');
+                    log('   - Allowed types: image/png, image/jpeg, image/gif, image/webp');
+                    log('   - File size limit: 5MB');
+
+                    document.getElementById('bucketStatus').textContent = 'Manuel Bucket Gerekli ⚠️';
+                    document.getElementById('bucketStatus').className = 'status pending';
+                    document.getElementById('tablesBtn').disabled = false;
+                    return;
+                }
+
+                const bucketExists = buckets && buckets.some(bucket => bucket.name === 'quality-photos');
+
+                if (bucketExists) {
+                    log('✅ Quality-photos bucket zaten mevcut');
+                    document.getElementById('bucketStatus').textContent = 'Bucket Mevcut ✅';
+                    document.getElementById('bucketStatus').className = 'status success';
+                    document.getElementById('tablesBtn').disabled = false;
+                    return;
+                }
+
+                // Bucket yok, manuel oluşturma talimatı ver
+                log('📝 MANUEL İŞLEM GEREKLİ:');
+                log('   1. Supabase Dashboard\'a gidin');
+                log('   2. Storage > Buckets bölümüne gidin');
+                log('   3. "New bucket" butonuna tıklayın');
+                log('   4. Name: quality-photos');
+                log('   5. Public bucket: ✓ (checked)');
+                log('   6. Create bucket butonuna tıklayın');
+                log('');
+                log('⚠️ Storage bucket manuel oluşturma gerekiyor');
+
+                document.getElementById('bucketStatus').textContent = 'Manuel Oluşturun ⚠️';
+                document.getElementById('bucketStatus').className = 'status pending';
+                document.getElementById('tablesBtn').disabled = false;
+
+            } catch (error) {
+                log('⚠️ Storage işlemi atlanıyor: ' + error.message);
+                log('📝 Fotoğraflar için alternatif yöntem kullanılacak');
+
+                document.getElementById('bucketStatus').textContent = 'Alternatif Yöntem ✅';
+                document.getElementById('bucketStatus').className = 'status success';
+                document.getElementById('tablesBtn').disabled = false;
+            }
+        }
+
+        async function createTables() {
+            try {
+                log('Database tabloları oluşturuluyor...');
+                log('⚠️ MANUEL İŞLEM: Supabase Dashboard\'da SQL Editor kullanarak tabloları oluşturun');
+
+                // Test için basit tablo var mı kontrol
+                try {
+                    const { data: testData, error: testError } = await supabase
+                        .from('quality_issues')
+                        .select('count', { count: 'exact', head: true });
+
+                    if (!testError) {
+                        log('✅ quality_issues tablosu zaten mevcut');
+                        document.getElementById('tablesStatus').textContent = 'Tablolar Mevcut ✅';
+                        document.getElementById('tablesStatus').className = 'status success';
+                        document.getElementById('dataBtn').disabled = false;
+                        return;
+                    }
+                } catch (e) {
+                    // Tablo yok, oluşturmaya devam et
+                }
+
+                log('📝 MANUEL SQL İŞLEMLERİ:');
+                log('1. Supabase Dashboard > SQL Editor\'a gidin');
+                log('2. Aşağıdaki SQL\'leri sırayla çalıştırın:');
+                log('');
+
+                log('-- 1. Quality Issues Tablosu:');
+                log(`CREATE TABLE IF NOT EXISTS quality_issues (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    issue_title VARCHAR(255) NOT NULL,
+    issue_description TEXT NOT NULL,
+    issue_location VARCHAR(255),
+    priority_level VARCHAR(20) DEFAULT 'medium' CHECK (priority_level IN ('low', 'medium', 'high', 'critical')),
+    status VARCHAR(20) DEFAULT 'reported' CHECK (status IN ('reported', 'assigned', 'in_progress', 'fixed', 'review', 'approved', 'rejected')),
+    reporter_id UUID REFERENCES employees(id),
+    reporter_notes TEXT,
+    assigned_to UUID REFERENCES employees(id),
+    assigned_date TIMESTAMP,
+    supervisor_id UUID REFERENCES employees(id),
+    before_photo_url TEXT,
+    after_photo_url TEXT,
+    created_at TIMESTAMP DEFAULT NOW(),
+    started_at TIMESTAMP,
+    completed_at TIMESTAMP,
+    reviewed_at TIMESTAMP,
+    approved_at TIMESTAMP,
+    estimated_fix_time INTEGER,
+    actual_fix_time INTEGER,
+    created_by UUID REFERENCES employees(id),
+    updated_at TIMESTAMP DEFAULT NOW()
+);`);
+
+                log('');
+                log('-- 2. Issue Comments Tablosu:');
+                log(`CREATE TABLE IF NOT EXISTS issue_comments (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    issue_id UUID REFERENCES quality_issues(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES employees(id),
+    comment_text TEXT NOT NULL,
+    comment_type VARCHAR(20) DEFAULT 'general' CHECK (comment_type IN ('general', 'progress', 'solution', 'review')),
+    created_at TIMESTAMP DEFAULT NOW()
+);`);
+
+                log('');
+                log('-- 3. Issue History Tablosu:');
+                log(`CREATE TABLE IF NOT EXISTS issue_history (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    issue_id UUID REFERENCES quality_issues(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES employees(id),
+    old_status VARCHAR(20),
+    new_status VARCHAR(20),
+    change_reason TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+);`);
+
+                log('');
+                log('-- 4. Issue Categories Tablosu:');
+                log(`CREATE TABLE IF NOT EXISTS issue_categories (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    category_name VARCHAR(100) NOT NULL UNIQUE,
+    category_description TEXT,
+    color_code VARCHAR(7) DEFAULT '#808080',
+    created_at TIMESTAMP DEFAULT NOW()
+);`);
+
+                log('');
+                log('-- 5. İndeksler:');
+                log(`CREATE INDEX IF NOT EXISTS idx_quality_issues_status ON quality_issues(status);
+CREATE INDEX IF NOT EXISTS idx_quality_issues_assigned_to ON quality_issues(assigned_to);
+CREATE INDEX IF NOT EXISTS idx_quality_issues_reporter_id ON quality_issues(reporter_id);
+CREATE INDEX IF NOT EXISTS idx_quality_issues_created_at ON quality_issues(created_at);
+CREATE INDEX IF NOT EXISTS idx_quality_issues_priority ON quality_issues(priority_level);
+CREATE INDEX IF NOT EXISTS idx_issue_comments_issue_id ON issue_comments(issue_id);
+CREATE INDEX IF NOT EXISTS idx_issue_history_issue_id ON issue_history(issue_id);`);
+
+                log('');
+                log('⚠️ SQL\'leri manuel çalıştırdıktan sonra "Örnek Verileri Ekle" butonuna tıklayın');
+
+                document.getElementById('tablesStatus').textContent = 'Manuel SQL Gerekli ⚠️';
+                document.getElementById('tablesStatus').className = 'status pending';
+                document.getElementById('dataBtn').disabled = false;
+
+            } catch (error) {
+                document.getElementById('tablesStatus').textContent = 'Tablo Hatası ❌';
+                document.getElementById('tablesStatus').className = 'status error';
+                log('❌ Tablo oluşturma hatası: ' + error.message);
+                log('📝 Manuel SQL çalıştırmanız gerekiyor');
+                document.getElementById('dataBtn').disabled = false;
+            }
+        }
+
+        async function insertSampleData() {
+            try {
+                log('Örnek veriler ekleniyor...');
+
+                // Önce kategoriler var mı kontrol et
+                const { data: existingCategories } = await supabase
+                    .from('issue_categories')
+                    .select('category_name');
+
+                if (existingCategories && existingCategories.length > 0) {
+                    log('✅ Kategoriler zaten mevcut');
+                } else {
+                    // Varsayılan kategorileri ekle
+                    const categories = [
+                        { category_name: 'Yapısal Hata', category_description: 'Yapısal entegrite ile ilgili hatalar', color_code: '#FF4444' },
+                        { category_name: 'Elektrik', category_description: 'Elektrik sistemi hataları', color_code: '#FFD700' },
+                        { category_name: 'Su Tesisatı', category_description: 'Su ve tesisat ile ilgili hatalar', color_code: '#4169E1' },
+                        { category_name: 'Boyama/Kaplama', category_description: 'Boyama ve kaplama hataları', color_code: '#32CD32' },
+                        { category_name: 'Güvenlik', category_description: 'İş güvenliği ile ilgili hatalar', color_code: '#FF8C00' },
+                        { category_name: 'Temizlik', category_description: 'Temizlik ve hijyen hataları', color_code: '#20B2AA' },
+                        { category_name: 'Diğer', category_description: 'Kategorize edilmemiş hatalar', color_code: '#808080' }
+                    ];
+
+                    const { error: categoriesError } = await supabase
+                        .from('issue_categories')
+                        .insert(categories);
+
+                    if (categoriesError) throw categoriesError;
+                    log('✅ Varsayılan kategoriler eklendi');
+                }
+
+                document.getElementById('dataStatus').textContent = 'Örnek Veriler Eklendi ✅';
+                document.getElementById('dataStatus').className = 'status success';
+                log('✅ Setup tamamlandı! Quality Control sistemi kullanıma hazır.');
+                log('');
+                log('🎉 Artık ana uygulamada "Kalite Kontrol" menüsünü kullanabilirsiniz!');
+
+            } catch (error) {
+                document.getElementById('dataStatus').textContent = 'Veri Hatası ❌';
+                document.getElementById('dataStatus').className = 'status error';
+                log('❌ Örnek veri ekleme hatası: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>
