@@ -112,6 +112,15 @@
 }
 
 /* Dropdown Arrow */
+.nav-link.has-dropdown {
+    cursor: pointer;
+    position: relative;
+    background: none;
+    border: none;
+    width: 100%;
+    text-align: left;
+}
+
 .nav-link.has-dropdown::after {
     content: '\f107';
     font-family: 'Font Awesome 6 Free';

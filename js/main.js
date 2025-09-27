@@ -251,11 +251,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
     
-    // Setup navigation
-    setupNavigation();
-    
     // Load initial page
     await navigateTo('dashboard');
+
+    // Setup navigation after page is loaded
+    setupNavigation();
     
     // Setup hash change listener for browser back/forward
     window.addEventListener('hashchange', handleHashChange);
@@ -267,13 +267,17 @@ function setupNavigation() {
     document.querySelectorAll('.nav-link.has-dropdown').forEach(button => {
         button.addEventListener('click', function(e) {
             e.preventDefault();
+            e.stopPropagation();
+
             const dropdown = this.nextElementSibling;
             const isOpen = dropdown.classList.contains('show');
 
             // Close all other dropdowns
             document.querySelectorAll('.dropdown-menu').forEach(menu => {
                 menu.classList.remove('show');
-                menu.previousElementSibling.classList.remove('open');
+                if (menu.previousElementSibling) {
+                    menu.previousElementSibling.classList.remove('open');
+                }
             });
 
             // Toggle current dropdown
@@ -323,12 +327,18 @@ function setupNavigation() {
             e.preventDefault();
             const page = link.dataset.page;
             if (page) {
-                // If it's a dropdown item, also highlight parent
+                // If it's a dropdown item, close the dropdown and highlight parent
                 if (link.classList.contains('dropdown-item')) {
+                    // Close the dropdown
                     const parentDropdown = link.closest('.nav-item');
                     if (parentDropdown) {
+                        const dropdownMenu = parentDropdown.querySelector('.dropdown-menu');
                         const parentButton = parentDropdown.querySelector('.nav-link.has-dropdown');
+                        if (dropdownMenu) {
+                            dropdownMenu.classList.remove('show');
+                        }
                         if (parentButton) {
+                            parentButton.classList.remove('open');
                             // Mark parent as active but don't add active class to dropdown button
                             document.querySelectorAll('.nav-link.has-dropdown').forEach(btn => {
                                 btn.classList.remove('active');
@@ -343,10 +353,13 @@ function setupNavigation() {
 
     // Close dropdowns when clicking outside
     document.addEventListener('click', function(e) {
+        // Don't close if clicking on dropdown button or menu
         if (!e.target.closest('.nav-item')) {
             document.querySelectorAll('.dropdown-menu').forEach(menu => {
                 menu.classList.remove('show');
-                menu.previousElementSibling.classList.remove('open');
+                if (menu.previousElementSibling) {
+                    menu.previousElementSibling.classList.remove('open');
+                }
             });
         }
     });
