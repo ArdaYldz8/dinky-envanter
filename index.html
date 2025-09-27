@@ -55,61 +55,43 @@
                 </li>
 
                 <!-- Personel Dropdown -->
-                <li class="nav-item">
-                    <button class="nav-link has-dropdown" data-tooltip="Personel">
+                <li class="nav-item dropdown">
+                    <button class="nav-link dropdown-btn">
                         <i class="fas fa-users"></i>
                         <span>Personel</span>
+                        <i class="fas fa-chevron-down arrow"></i>
                     </button>
-                    <div class="dropdown-menu">
-                        <a href="#" data-page="personnel" class="dropdown-item">
-                            <i class="fas fa-user-tie"></i>
-                            <span>Personel Listesi</span>
-                        </a>
-                        <a href="#" data-page="attendance" class="dropdown-item">
-                            <i class="fas fa-calendar-check"></i>
-                            <span>Puantaj</span>
-                        </a>
-                        <a href="#" data-page="tasks" class="dropdown-item">
-                            <i class="fas fa-tasks"></i>
-                            <span>Görev Yönetimi</span>
-                        </a>
-                    </div>
+                    <ul class="dropdown-content">
+                        <li><a href="#" data-page="personnel">Personel Listesi</a></li>
+                        <li><a href="#" data-page="attendance">Puantaj</a></li>
+                        <li><a href="#" data-page="tasks">Görev Yönetimi</a></li>
+                    </ul>
                 </li>
 
                 <!-- Stok Dropdown -->
-                <li class="nav-item">
-                    <button class="nav-link has-dropdown" data-tooltip="Stok">
+                <li class="nav-item dropdown">
+                    <button class="nav-link dropdown-btn">
                         <i class="fas fa-boxes"></i>
                         <span>Stok</span>
+                        <i class="fas fa-chevron-down arrow"></i>
                     </button>
-                    <div class="dropdown-menu">
-                        <a href="#" data-page="stock" class="dropdown-item">
-                            <i class="fas fa-warehouse"></i>
-                            <span>Stok Yönetimi</span>
-                        </a>
-                        <a href="#" data-page="barcode" class="dropdown-item">
-                            <i class="fas fa-barcode"></i>
-                            <span>Barkod İşlemleri</span>
-                        </a>
-                    </div>
+                    <ul class="dropdown-content">
+                        <li><a href="#" data-page="stock">Stok Yönetimi</a></li>
+                        <li><a href="#" data-page="barcode">Barkod İşlemleri</a></li>
+                    </ul>
                 </li>
 
                 <!-- Ticari Dropdown -->
-                <li class="nav-item">
-                    <button class="nav-link has-dropdown" data-tooltip="Ticari">
+                <li class="nav-item dropdown">
+                    <button class="nav-link dropdown-btn">
                         <i class="fas fa-briefcase"></i>
                         <span>Ticari</span>
+                        <i class="fas fa-chevron-down arrow"></i>
                     </button>
-                    <div class="dropdown-menu">
-                        <a href="#" data-page="customers" class="dropdown-item">
-                            <i class="fas fa-users-cog"></i>
-                            <span>Cari Hesaplar</span>
-                        </a>
-                        <a href="#" data-page="quotes" class="dropdown-item">
-                            <i class="fas fa-file-invoice-dollar"></i>
-                            <span>Teklifler</span>
-                        </a>
-                    </div>
+                    <ul class="dropdown-content">
+                        <li><a href="#" data-page="customers">Cari Hesaplar</a></li>
+                        <li><a href="#" data-page="quotes">Teklifler</a></li>
+                    </ul>
                 </li>
 
                 <!-- Proje Yönetimi -->
@@ -177,5 +159,56 @@
     <!-- JavaScript Modules -->
     <script type="module" src="js/services/supabaseClient.js"></script>
     <script type="module" src="js/main.js"></script>
+
+    <!-- Simple Dropdown Script -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Dropdown button click handler
+            document.querySelectorAll('.dropdown-btn').forEach(button => {
+                button.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const dropdown = this.closest('.dropdown');
+
+                    // Close all other dropdowns
+                    document.querySelectorAll('.dropdown').forEach(d => {
+                        if (d !== dropdown) {
+                            d.classList.remove('open');
+                        }
+                    });
+
+                    // Toggle current dropdown
+                    dropdown.classList.toggle('open');
+                });
+            });
+
+            // Dropdown item click handler
+            document.querySelectorAll('.dropdown-content a').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const page = this.dataset.page;
+
+                    // Close all dropdowns
+                    document.querySelectorAll('.dropdown').forEach(d => {
+                        d.classList.remove('open');
+                    });
+
+                    // Navigate if page exists and navigateTo function is available
+                    if (page && window.navigateTo) {
+                        window.navigateTo(page);
+                    }
+                });
+            });
+
+            // Close dropdowns when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!e.target.closest('.dropdown')) {
+                    document.querySelectorAll('.dropdown').forEach(d => {
+                        d.classList.remove('open');
+                    });
+                }
+            });
+        });
+    </script>
+
 </body>
 </html>

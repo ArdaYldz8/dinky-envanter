@@ -111,82 +111,70 @@
     font-size: 16px;
 }
 
-/* Dropdown Arrow */
-.nav-link.has-dropdown {
-    cursor: pointer !important;
+/* Dropdown Styles */
+.dropdown {
     position: relative;
+}
+
+.dropdown-btn {
     background: none;
     border: none;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
     width: 100%;
     text-align: left;
     display: flex;
     align-items: center;
-    padding: 12px 20px;
-    color: rgba(255, 255, 255, 0.85);
-    font-size: 14px;
+    gap: 10px;
 }
 
-.nav-link.has-dropdown span {
-    flex-grow: 1;
-}
-
-.nav-link.has-dropdown::after {
-    content: '\f107';
-    font-family: 'Font Awesome 6 Free';
-    font-weight: 900;
-    margin-left: auto;
-    transition: transform 0.3s ease;
+.dropdown-btn .arrow {
     font-size: 12px;
+    transition: transform 0.3s ease;
+    margin-left: auto;
 }
 
-.nav-link.has-dropdown.open::after {
+.dropdown.open .arrow {
     transform: rotate(180deg);
 }
 
-/* Dropdown Menu */
-.dropdown-menu {
+.dropdown-content {
     display: none;
-    background: rgba(0, 0, 0, 0.2);
-    margin-left: 0;
-    padding-left: 0;
+    background: rgba(0, 0, 0, 0.3);
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
-.dropdown-menu.show {
+.dropdown.open .dropdown-content {
     display: block;
-    animation: slideDown 0.3s ease;
 }
 
-@keyframes slideDown {
-    from {
-        opacity: 0;
-        transform: translateY(-10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+.dropdown-content li {
+    margin: 0;
 }
 
-.dropdown-item {
-    display: flex;
-    align-items: center;
-    padding: 10px 20px 10px 45px;
-    color: rgba(255, 255, 255, 0.7);
+.dropdown-content a {
+    display: block;
+    padding: 12px 20px;
+    color: rgba(255, 255, 255, 0.8);
     text-decoration: none;
     font-size: 13px;
     transition: all 0.2s ease;
-    border: none;
-    background: none;
-    width: 100%;
-    text-align: left;
-    cursor: pointer;
-    position: relative;
 }
 
-.dropdown-item:hover {
-    background: rgba(255, 255, 255, 0.05);
+.dropdown-content a:hover {
+    background: rgba(255, 255, 255, 0.1);
     color: white;
-    padding-left: 50px;
+    padding-left: 25px;
+}
+
+.dropdown-content a i {
+    margin-right: 8px;
+    width: 16px;
 }
 
 .dropdown-item.active {
