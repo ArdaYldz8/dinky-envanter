@@ -1812,3 +1812,27 @@ export const taskPersonnelService = {
     }
 };
 
+// Create main supabaseService object combining all services
+const supabaseService = {
+    // Employee operations
+    async getEmployees() {
+        return await employeeService.getAll();
+    },
+
+    async getCurrentUser() {
+        const userStr = localStorage.getItem('dinky_user');
+        return userStr ? JSON.parse(userStr) : null;
+    },
+
+    // Direct access to individual services
+    employees: employeeService,
+    projects: projectService,
+    products: productService,
+    customers: customerService,
+    inventory: inventoryService,
+    taskPersonnel: taskPersonnelService
+};
+
+// Export the main service
+export { supabaseService };
+

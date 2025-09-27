@@ -10,7 +10,24 @@ import { loadSettings } from './pages/settings.js';
 import { loadTasks } from './pages/tasks.js';
 import { loadCustomers } from './pages/customers.js';
 import { loadQuotes } from './pages/quotes.js';
+import { QualityControlPage } from './pages/quality-control.js';
 import { Toast } from './utils/toast.js';
+
+// Quality Control Page Loader
+async function loadQualityControl() {
+    const qcPage = new QualityControlPage();
+
+    // Set global reference for modal buttons
+    window.currentQCPage = qcPage;
+
+    // First render the HTML
+    document.getElementById('mainContent').innerHTML = qcPage.render();
+
+    // Then initialize after DOM is ready
+    setTimeout(() => {
+        qcPage.init();
+    }, 100);
+}
 
 // Router configuration
 const routes = {
@@ -21,6 +38,7 @@ const routes = {
     'barcode': loadBarcode,
     'customers': loadCustomers,
     'quotes': loadQuotes,
+    'quality-control': loadQualityControl,
     'reports': loadReports,
     'tasks': loadTasks,
     'settings': loadSettings
@@ -32,8 +50,8 @@ let currentUser = null;
 
 // Role-based permissions
 const rolePermissions = {
-    admin: ['dashboard', 'personnel', 'attendance', 'stock', 'barcode', 'customers', 'quotes', 'reports', 'tasks', 'settings'],
-    warehouse: ['dashboard', 'stock', 'barcode'],
+    admin: ['dashboard', 'personnel', 'attendance', 'stock', 'barcode', 'customers', 'quotes', 'quality-control', 'reports', 'tasks', 'settings'],
+    warehouse: ['dashboard', 'stock', 'barcode', 'quality-control'],
     accounting: ['dashboard', 'personnel', 'attendance', 'customers', 'quotes', 'reports', 'settings']
 };
 
