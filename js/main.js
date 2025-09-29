@@ -159,19 +159,31 @@ function hideUnauthorizedMenus() {
     // Hide individual nav items and dropdown items
     document.querySelectorAll('[data-page]').forEach(element => {
         const page = element.dataset.page;
+
+        // Check if this element is inside a dropdown
+        const isInDropdown = element.closest('.dropdown-content');
+
         if (!allowedPages.includes(page)) {
-            if (element.classList.contains('dropdown-item')) {
-                element.style.display = 'none';
+            if (isInDropdown) {
+                // For dropdown items, hide the parent <li>
+                const parentLi = element.closest('li');
+                if (parentLi) {
+                    parentLi.style.display = 'none';
+                }
             } else {
-                // For regular nav items, hide the parent li
+                // For regular nav items, hide the parent .nav-item
                 const parentItem = element.closest('.nav-item');
                 if (parentItem) {
                     parentItem.style.display = 'none';
                 }
             }
         } else {
-            if (element.classList.contains('dropdown-item')) {
-                element.style.display = '';
+            if (isInDropdown) {
+                // For dropdown items, show the parent <li>
+                const parentLi = element.closest('li');
+                if (parentLi) {
+                    parentLi.style.display = '';
+                }
             } else {
                 const parentItem = element.closest('.nav-item');
                 if (parentItem) {
@@ -182,12 +194,19 @@ function hideUnauthorizedMenus() {
     });
 
     // Hide empty dropdowns
-    document.querySelectorAll('.nav-item').forEach(item => {
-        const dropdown = item.querySelector('.dropdown-menu');
+    document.querySelectorAll('.nav-item.dropdown').forEach(item => {
+        const dropdown = item.querySelector('.dropdown-content');
         if (dropdown) {
-            const visibleItems = dropdown.querySelectorAll('.dropdown-item:not([style*="display: none"])');
+            const allLinks = Array.from(dropdown.querySelectorAll('a[data-page]'));
+            const visibleItems = allLinks.filter(link => {
+                const parentLi = link.closest('li');
+                return parentLi && parentLi.style.display !== 'none';
+            });
+
             if (visibleItems.length === 0) {
                 item.style.display = 'none';
+            } else {
+                item.style.display = '';
             }
         }
     });
