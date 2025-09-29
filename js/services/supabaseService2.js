@@ -217,7 +217,7 @@ export const projectService = {
         const { data, error } = await supabase
             .from('projects')
             .select()
-            .eq('status', 'Aktif')
+            .in('status', ['in_progress', 'started'])
             .order('project_name');
         return { data, error };
     },
@@ -368,14 +368,50 @@ export const attendanceService = {
     },
 
     async upsert(records) {
-        const { data, error } = await supabase
-            .from('attendance_records')
-            .upsert(records, { 
-                onConflict: 'employee_id,work_date',
-                ignoreDuplicates: false 
-            })
-            .select();
-        return { data, error };
+        console.log('🔍 UPSERT BAŞLADI - Gelen kayıtlar:', records);
+        console.log('🔍 Satır numarası:', new Error().stack);
+
+        // RPC fonksiyonu kullanarak upsert
+        const results = [];
+        const errors = [];
+
+        for (const record of records) {
+            try {
+                console.log('🔥 RPC çağrısı yapılıyor:', {
+                    p_employee_id: record.employee_id,
+                    p_work_date: record.work_date,
+                    p_status: record.status,
+                    p_project_id: record.project_id,
+                    p_overtime_hours: record.overtime_hours || 0,
+                    p_overtime_note: record.overtime_note || '',
+                    p_company_id: record.company_id
+                });
+
+                const { data, error } = await supabase
+                    .rpc('upsert_attendance_record', {
+                        p_employee_id: record.employee_id,
+                        p_work_date: record.work_date,
+                        p_status: record.status,
+                        p_project_id: record.project_id,
+                        p_overtime_hours: record.overtime_hours || 0,
+                        p_overtime_note: record.overtime_note || '',
+                        p_company_id: record.company_id
+                    });
+
+                console.log('🔥 RPC sonucu:', { data, error });
+                if (error) throw error;
+                results.push(data);
+            } catch (err) {
+                console.error('❌ Upsert error for record:', record, err);
+                errors.push(err);
+            }
+        }
+
+        if (errors.length > 0) {
+            return { data: results, error: errors[0] };
+        }
+
+        return { data: results, error: null };
     },
 
     async getAll() {
@@ -509,159 +545,6 @@ export const attendanceService = {
         return { data, error };
     },
 
-    async upsert(records) {
-        // Since there's no unique constraint, we need to handle upsert manually
-        const results = [];
-        const errors = [];
-        
-        for (const record of records) {
-            if (record.id) {
-                // Update existing record
-                try {
-                    const { data, error } = await supabase
-                        .from('attendance_records')
-                        .update({
-                            status: record.status,
-                            project_id: record.project_id || null,
-                            overtime_hours: record.overtime_hours || 0
-                        })
-                        .eq('id', record.id)
-                        .select();
-                        
-                    if (error) {
-                        console.error('Update error for ID:', record.id, error);
-                        errors.push(error);
-                    } else if (data && data.length > 0) {
-                        results.push(...data);
-                        // Activity logging for update
-                        try {
-                            const userInfo = this.getCurrentUserInfo();
-                            const { data: employee } = await supabase
-                                .from('employees')
-                                .select('full_name')
-                                .eq('id', data[0].employee_id)
-                                .single();
-                                
-                            await supabase.rpc('log_user_activity', {
-                                p_action_type: 'UPDATE',
-                                p_table_name: 'attendance_records',
-                                p_record_id: data[0].id,
-                                p_description: `Puantaj güncellendi: ${employee?.full_name || 'Bilinmeyen'} - ${data[0].work_date}`,
-                                p_new_values: data[0],
-                                p_user_id: userInfo.id,
-                                p_user_name: userInfo.name,
-                                p_user_role: userInfo.role
-                            });
-                        } catch (logError) {
-                            console.warn('Attendance upsert update activity logging failed:', logError);
-                        }
-                    }
-                } catch (err) {
-                    console.error('Update exception:', err);
-                    errors.push(err);
-                }
-            } else {
-                // Check if record exists for this employee and date
-                const { data: existingRecords } = await supabase
-                    .from('attendance_records')
-                    .select('id')
-                    .eq('employee_id', record.employee_id)
-                    .eq('work_date', record.work_date);
-                
-                const existing = existingRecords && existingRecords.length > 0 ? existingRecords[0] : null;
-                
-                if (existing) {
-                    // Update existing
-                    const { data, error } = await supabase
-                        .from('attendance_records')
-                        .update({
-                            status: record.status,
-                            project_id: record.project_id || null,
-                            overtime_hours: record.overtime_hours || 0
-                        })
-                        .eq('id', existing.id)
-                        .select();
-                        
-                    if (error) {
-                        console.error('Update existing error:', error);
-                        errors.push(error);
-                    } else if (data && data.length > 0) {
-                        results.push(...data);
-                        // Activity logging for update existing
-                        try {
-                            const userInfo = this.getCurrentUserInfo();
-                            const { data: employee } = await supabase
-                                .from('employees')
-                                .select('full_name')
-                                .eq('id', data[0].employee_id)
-                                .single();
-                                
-                            await supabase.rpc('log_user_activity', {
-                                p_action_type: 'UPDATE',
-                                p_table_name: 'attendance_records',
-                                p_record_id: data[0].id,
-                                p_description: `Puantaj güncellendi: ${employee?.full_name || 'Bilinmeyen'} - ${data[0].work_date}`,
-                                p_new_values: data[0],
-                                p_user_id: userInfo.id,
-                                p_user_name: userInfo.name,
-                                p_user_role: userInfo.role
-                            });
-                        } catch (logError) {
-                            console.warn('Attendance existing update activity logging failed:', logError);
-                        }
-                    }
-                } else {
-                    // Insert new (clean record without id field)
-                    const newRecord = {
-                        employee_id: record.employee_id,
-                        work_date: record.work_date,
-                        status: record.status,
-                        project_id: record.project_id || null,
-                        overtime_hours: record.overtime_hours || 0
-                    };
-                    
-                    const { data, error } = await supabase
-                        .from('attendance_records')
-                        .insert([newRecord])
-                        .select();
-                        
-                    if (error) {
-                        console.error('Insert error:', error);
-                        errors.push(error);
-                    } else if (data && data.length > 0) {
-                        results.push(...data);
-                        // Activity logging for insert new
-                        try {
-                            const userInfo = this.getCurrentUserInfo();
-                            const { data: employee } = await supabase
-                                .from('employees')
-                                .select('full_name')
-                                .eq('id', data[0].employee_id)
-                                .single();
-                                
-                            await supabase.rpc('log_user_activity', {
-                                p_action_type: 'CREATE',
-                                p_table_name: 'attendance_records',
-                                p_record_id: data[0].id,
-                                p_description: `Yeni puantaj kaydı: ${employee?.full_name || 'Bilinmeyen'} - ${data[0].work_date}`,
-                                p_new_values: data[0],
-                                p_user_id: userInfo.id,
-                                p_user_name: userInfo.name,
-                                p_user_role: userInfo.role
-                            });
-                        } catch (logError) {
-                            console.warn('Attendance insert activity logging failed:', logError);
-                        }
-                    }
-                }
-            }
-        }
-        
-        return { 
-            data: results.length > 0 ? results : null, 
-            error: errors.length > 0 ? errors[0] : null 
-        };
-    },
 
     async delete(id) {
         const { error } = await supabase
@@ -875,7 +758,7 @@ export const inventoryService = {
     async getAll() {
         const { data, error } = await supabase
             .from('inventory_movements')
-            .select('id, product_id, type, quantity, movement_date, description, created_at')
+            .select('id, product_id, movement_type, quantity, movement_date, description, created_at')
             .order('movement_date', { ascending: false })
             .limit(100);
         return { data, error };
@@ -885,7 +768,7 @@ export const inventoryService = {
         const { data, error } = await supabase
             .from('inventory_movements')
             .select(`
-                id, type, quantity, movement_date, description, created_at,
+                id, movement_type, quantity, movement_date, description, created_at,
                 project_id,
                 projects (project_name)
             `)
@@ -898,7 +781,7 @@ export const inventoryService = {
         const { data, error } = await supabase
             .from('inventory_movements')
             .select(`
-                id, product_id, type, quantity, movement_date, created_at,
+                id, product_id, movement_type, quantity, movement_date, created_at,
                 products (product_name, unit)
             `)
             .order('created_at', { ascending: false })
@@ -927,7 +810,7 @@ export const inventoryService = {
         // Clean movement object to ensure no undefined values
         const cleanMovement = {
             product_id: movement.product_id,
-            type: movement.type,
+            movement_type: movement.type || movement.movement_type,
             quantity: movement.quantity,
             movement_date: movement.movement_date,
             employee_id: movement.employee_id || null,
@@ -980,7 +863,7 @@ export const inventoryService = {
             .from('inventory_movements')
             .update(updates)
             .eq('id', id)
-            .select('id, product_id, type, quantity, movement_date, description, created_at')
+            .select('id, product_id, movement_type, quantity, movement_date, description, created_at')
             .single();
         return { data, error };
     },

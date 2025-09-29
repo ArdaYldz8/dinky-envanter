@@ -1,5 +1,5 @@
 // Attendance (Puantaj) Page
-import { attendanceService, employeeService, projectService } from '../services/supabaseService.js';
+import { attendanceService, employeeService, projectService } from '../services/supabaseService2.js';
 import { formatter } from '../utils/formatter.js';
 import { Toast } from '../utils/toast.js';
 import { Modal } from '../components/Modal.js';
@@ -415,8 +415,11 @@ window.saveAttendance = async function() {
     }
 
     try {
+        // Sabit company_id kullan (tek şirket)
+        const company_id = '2c12fcbb-15e4-491b-adc9-1772a0d4dcfb';
+
         const recordsToSave = [];
-        
+
         modifiedRecords.forEach(index => {
             const record = currentAttendanceData[index];
 
@@ -433,7 +436,7 @@ window.saveAttendance = async function() {
                 project_id: record.project_id || null,
                 overtime_hours: parseFloat(record.overtime_hours) || 0.00,
                 overtime_note: record.overtime_note || '',
-                custom_hours: record.status === 'Serbest Saat' ? parseFloat(record.custom_hours) || 0.00 : 0.00
+                company_id: company_id
             };
 
             // Only include ID if it exists (for updates)
@@ -443,6 +446,8 @@ window.saveAttendance = async function() {
 
             recordsToSave.push(recordData);
         });
+
+        console.log('📝 Records to save:', recordsToSave);
 
         const { error } = await attendanceService.upsert(recordsToSave);
         if (error) throw error;

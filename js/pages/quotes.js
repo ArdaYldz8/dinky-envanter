@@ -1,6 +1,6 @@
 // Quotes Page
 import { quoteService } from '../services/quoteService.js';
-import { customerService, productService } from '../services/supabaseService.js';
+import { customerService, productService } from '../services/supabaseService2.js';
 import { formatter } from '../utils/formatter.js';
 import { Toast } from '../utils/toast.js';
 import { Modal } from '../components/Modal.js';

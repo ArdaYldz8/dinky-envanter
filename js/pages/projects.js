@@ -2,7 +2,7 @@
 // Proje Yönetim Sayfası
 
 import { projectService } from '../services/projectService.js';
-import { supabaseService } from '../services/supabaseService.js';
+import { supabaseService } from '../services/supabaseService2.js';
 import { formatter } from '../utils/formatter.js';
 import { Toast } from '../utils/toast.js';
 

@@ -342,6 +342,7 @@
                         email: data.user.email,
                         name: data.user.email.split('@')[0],
                         role: roleData,
+                        company_id: '2c12fcbb-15e4-491b-adc9-1772a0d4dcfb',
                         loginTime: new Date().toISOString(),
                         lastActivity: new Date().toISOString()
                     };
@@ -355,6 +356,7 @@
                         email: sessionData.email || data.user.email,
                         name: (sessionData.email || data.user.email).split('@')[0],
                         role: sessionData.role,
+                        company_id: sessionData.company_id || '2c12fcbb-15e4-491b-adc9-1772a0d4dcfb',
                         loginTime: new Date().toISOString(),
                         lastActivity: new Date().toISOString()
                     };

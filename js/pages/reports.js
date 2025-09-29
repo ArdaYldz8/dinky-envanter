@@ -1,5 +1,5 @@
 // Reports Page
-import { payrollService, supabase } from '../services/supabaseService.js';
+import { payrollService, supabase } from '../services/supabaseService2.js';
 import { formatter } from '../utils/formatter.js';
 import { Toast } from '../utils/toast.js';
 

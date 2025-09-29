@@ -2,7 +2,7 @@
 // Kalite Kontrol Sayfası
 
 import { qualityControlService } from '../services/qualityControlService.js';
-import { supabaseService } from '../services/supabaseService.js';
+import { supabaseService } from '../services/supabaseService2.js';
 
 class QualityControlPage {
     constructor() {

@@ -1,5 +1,5 @@
 // Personnel Management Page
-import { employeeService, transactionService, attendanceService } from '../services/supabaseService.js';
+import { employeeService, transactionService, attendanceService } from '../services/supabaseService2.js';
 import { formatter } from '../utils/formatter.js';
 import { Toast } from '../utils/toast.js';
 import { Modal } from '../components/Modal.js';

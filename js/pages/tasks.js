@@ -1,5 +1,5 @@
 // Task Management Page
-import { taskService, taskPersonnelService, supabase } from '../services/supabaseService.js';
+import { taskService, taskPersonnelService, supabase } from '../services/supabaseService2.js';
 import { Toast } from '../utils/toast.js';
 
 // Global filter state
